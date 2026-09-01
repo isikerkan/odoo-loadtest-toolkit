@@ -153,6 +153,24 @@ class TestLoadtestRun(TransactionCase):
         run.action_start()
         self.assertFalse(run.sample_ids)
 
+    def test_stop_at_triggers_stop(self):
+        from datetime import timedelta
+        from odoo import fields as ofields
+        run = self._run()
+        run.action_start()
+        run.stop_at = ofields.Datetime.now() + timedelta(hours=1)
+        with patch.object(type(run), "_locust_get", return_value=LIVE):
+            run.action_refresh()
+        self.assertEqual(run.state, "running")  # future stop_at: keeps going
+        run.stop_at = ofields.Datetime.now() - timedelta(seconds=1)
+        with open(run._csv_prefix() + "_stats.csv", "w") as fh:
+            fh.write(CSV)
+        with patch.object(type(run), "_locust_get", return_value=None), patch(
+            "odoo.addons.loadtest_toolkit.models.loadtest_run.time.sleep"
+        ):
+            run.action_refresh()
+        self.assertEqual(run.state, "done")
+
     def test_repeat_creates_new_run(self):
         run = self._run()
         run.action_start()

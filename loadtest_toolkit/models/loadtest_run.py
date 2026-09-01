@@ -48,6 +48,12 @@ class LoadtestRun(models.Model):
         required=True,
     )
     started_at = fields.Datetime(readonly=True)
+    stop_at = fields.Datetime(
+        help="Automatically stop the run at this time (checked by the poll "
+             "cron, so with up to a minute of slack). Can be set or changed "
+             "while the run is going; leave empty for a fixed-duration or "
+             "manually stopped run."
+    )
     ended_at = fields.Datetime(readonly=True)
     port = fields.Integer(readonly=True)
     run_dir = fields.Char(readonly=True)
@@ -287,7 +293,12 @@ class LoadtestRun(models.Model):
         }
 
     def action_refresh(self):
-        for run in self.filtered(lambda r: r.state in RUNNING_STATES):
+        due = self.filtered(
+            lambda r: r.state in RUNNING_STATES and r.stop_at and r.stop_at <= fields.Datetime.now()
+        )
+        if due:
+            due.action_stop()
+        for run in (self - due).filtered(lambda r: r.state in RUNNING_STATES):
             master = run.process_ids.filtered(lambda p: p.role == "master")[:1]
             alive = self._pid_alive(master.pid)
             stats = run._locust_get("/stats/requests") if alive else None
