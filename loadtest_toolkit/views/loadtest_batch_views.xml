@@ -22,6 +22,14 @@
                         invisible="state == 'draft'"
                         confirm="Delete everything this batch generated (and what its users created) and archive the users?"
                     />
+                    <button name="action_generate_users" type="object" string="Generate Users" invisible="generated_user_count" />
+                    <button name="action_generate_partners" type="object" string="Generate Partners" invisible="generated_partner_count" />
+                    <button name="action_generate_products" type="object" string="Generate Products" invisible="generated_product_count" />
+                    <button name="action_generate_orders" type="object" string="Generate Orders" invisible="generated_order_count or not (generated_user_count and generated_partner_count and generated_product_count)" />
+                    <button name="action_cleanup_orders" type="object" string="Clean Up Orders" invisible="not generated_order_count" confirm="Delete the generated orders and those the test users created?" />
+                    <button name="action_cleanup_products" type="object" string="Clean Up Products" invisible="not generated_product_count or generated_order_count" confirm="Delete the generated products and those the test users created?" />
+                    <button name="action_cleanup_partners" type="object" string="Clean Up Partners" invisible="not generated_partner_count or generated_order_count" confirm="Delete the generated partners and those the test users created?" />
+                    <button name="action_cleanup_users" type="object" string="Clean Up Users" invisible="not generated_user_count or generated_order_count" confirm="Archive the users and delete the chatter messages they wrote?" />
                     <field name="state" widget="statusbar" />
                 </header>
                 <sheet>
@@ -43,33 +51,11 @@
                         <field name="name" />
                         <field name="password" readonly="generated_user_count" />
                     </group>
-                    <group string="Users">
+                    <group string="Volumes">
                         <field name="user_count" readonly="generated_user_count" />
-                        <div colspan="2">
-                            <button name="action_generate_users" type="object" string="Generate Users" class="btn-secondary" invisible="generated_user_count" />
-                            <button name="action_cleanup_users" type="object" string="Clean Up Users" class="btn-secondary" invisible="not generated_user_count" confirm="Archive the users and delete the chatter messages they wrote?" />
-                        </div>
-                    </group>
-                    <group string="Partners">
                         <field name="partner_count" readonly="generated_partner_count" />
-                        <div colspan="2">
-                            <button name="action_generate_partners" type="object" string="Generate Partners" class="btn-secondary" invisible="generated_partner_count" />
-                            <button name="action_cleanup_partners" type="object" string="Clean Up Partners" class="btn-secondary" invisible="not generated_partner_count" confirm="Delete the generated partners and those the test users created?" />
-                        </div>
-                    </group>
-                    <group string="Products">
                         <field name="product_count" readonly="generated_product_count" />
-                        <div colspan="2">
-                            <button name="action_generate_products" type="object" string="Generate Products" class="btn-secondary" invisible="generated_product_count" />
-                            <button name="action_cleanup_products" type="object" string="Clean Up Products" class="btn-secondary" invisible="not generated_product_count" confirm="Delete the generated products and those the test users created?" />
-                        </div>
-                    </group>
-                    <group string="Sale Orders">
                         <field name="order_count" readonly="generated_order_count" />
-                        <div colspan="2">
-                            <button name="action_generate_orders" type="object" string="Generate Orders" class="btn-secondary" invisible="generated_order_count" />
-                            <button name="action_cleanup_orders" type="object" string="Clean Up Orders" class="btn-secondary" invisible="not generated_order_count" confirm="Delete the generated orders and those the test users created?" />
-                        </div>
                     </group>
                     <notebook>
                         <page string="Test Users"><field name="user_ids" readonly="1" /></page>
