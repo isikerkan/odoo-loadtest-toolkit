@@ -42,7 +42,11 @@
                         <group string="Load Profile">
                             <field name="user_count" />
                             <field name="spawn_rate" />
-                            <field name="duration" />
+                            <label for="duration_value" string="Duration" />
+                            <div class="o_row">
+                                <field name="duration_value" invisible="duration_unit == 'infinite'" />
+                                <field name="duration_unit" />
+                            </div>
                             <field name="worker_count" />
                         </group>
                     </group>
@@ -72,7 +76,8 @@
                 <field name="name" />
                 <field name="batch_id" />
                 <field name="user_count" />
-                <field name="duration" />
+                <field name="duration_value" optional="show" />
+                <field name="duration_unit" optional="show" />
                 <field name="worker_count" />
                 <field name="run_count" />
             </list>

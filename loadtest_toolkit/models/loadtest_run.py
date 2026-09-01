@@ -22,6 +22,11 @@ import requests
 
 try:
     import psutil
+
+    # psutil.cpu_percent(interval=None) returns 0.0 on its first call in
+    # a process (it measures since the previous call); prime the baseline
+    # at import so the first real sample is already meaningful
+    psutil.cpu_percent(interval=None)
 except ImportError:
     psutil = None
 

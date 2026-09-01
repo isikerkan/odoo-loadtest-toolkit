@@ -46,7 +46,8 @@ class TestLoadtestRun(TransactionCase):
         sales = self.env.ref("loadtest_toolkit.journey_sales_rep")
         self.scenario = self.env["loadtest.scenario"].create({
             "name": "Smoke", "batch_id": self.batch.id, "target_url": "http://127.0.0.1:8069",
-            "user_count": 5, "spawn_rate": 1.0, "duration": 60, "worker_count": 2,
+            "user_count": 5, "spawn_rate": 1.0,
+            "duration_value": 60, "duration_unit": "seconds", "worker_count": 2,
             "journey_line_ids": [(0, 0, {"journey_id": browser.id, "weight": 3}),
                                  (0, 0, {"journey_id": sales.id, "weight": 1})],
         })
@@ -152,6 +153,14 @@ class TestLoadtestRun(TransactionCase):
         # restart resets samples
         run.action_start()
         self.assertFalse(run.sample_ids)
+
+    def test_duration_units(self):
+        cases = [(90, "seconds", 90), (5, "minutes", 300), (2, "hours", 7200),
+                 (1, "days", 86400), (7, "infinite", 0)]
+        for value, unit, expected in cases:
+            self.scenario.write({"duration_value": value, "duration_unit": unit})
+            self.assertEqual(self.scenario.duration, expected, f"{value} {unit}")
+        self.scenario.write({"duration_value": 60, "duration_unit": "seconds"})
 
     def test_stop_at_triggers_stop(self):
         from datetime import timedelta

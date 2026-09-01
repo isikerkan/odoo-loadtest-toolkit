@@ -20,11 +20,31 @@ class LoadtestScenario(models.Model):
     )
     user_count = fields.Integer(default=10, required=True, help="Concurrent virtual users")
     spawn_rate = fields.Float(default=2.0, required=True, help="Users started per second")
-    duration = fields.Integer(default=300, help="Seconds; 0 = run until stopped")
+    duration_value = fields.Integer(default=5, help="Length of the run in the chosen unit")
+    duration_unit = fields.Selection(
+        [("seconds", "Seconds"), ("minutes", "Minutes"), ("hours", "Hours"),
+         ("days", "Days"), ("infinite", "Infinite")],
+        default="minutes",
+        required=True,
+        help="Infinite runs end via the Stop button or the run's Stop At time",
+    )
+    duration = fields.Integer(
+        compute="_compute_duration", store=True,
+        help="Effective duration in seconds; 0 = run until stopped",
+    )
     worker_count = fields.Integer(default=0, help="Locust worker processes; 0 = single process")
     journey_line_ids = fields.One2many("loadtest.scenario.journey", "scenario_id", string="Journeys")
     run_ids = fields.One2many("loadtest.run", "scenario_id", string="Runs")
     run_count = fields.Integer(compute="_compute_run_count")
+
+    @api.depends("duration_value", "duration_unit")
+    def _compute_duration(self):
+        factor = {"seconds": 1, "minutes": 60, "hours": 3600, "days": 86400}
+        for scenario in self:
+            if scenario.duration_unit == "infinite":
+                scenario.duration = 0
+            else:
+                scenario.duration = max(0, scenario.duration_value) * factor[scenario.duration_unit]
 
     @api.depends("run_ids")
     def _compute_run_count(self):
@@ -36,6 +56,8 @@ class LoadtestScenario(models.Model):
         for scenario in self:
             if scenario.user_count < 1 or scenario.spawn_rate <= 0 or scenario.worker_count < 0:
                 raise UserError("Users must be >= 1, spawn rate > 0 and workers >= 0.")
+            if scenario.duration_unit != "infinite" and scenario.duration_value < 1:
+                raise UserError("Duration must be at least 1, or set the unit to Infinite.")
 
     def _weights(self):
         self.ensure_one()
