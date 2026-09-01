@@ -231,6 +231,14 @@ class LoadtestBatch(models.Model):
                 stray.unlink()
             batch.product_ids.sudo().exists().unlink()
             batch.partner_ids.sudo().exists().unlink()
+            # records the test users created themselves during load runs
+            # (partners, products, chatter messages on other records)
+            for model in ("product.template", "res.partner", "mail.message"):
+                stray = self.env[model].sudo().search(
+                    [("create_uid", "in", batch.user_ids.ids)]
+                )
+                if stray:
+                    stray.unlink()
             batch.user_ids.sudo().write({"active": False})
             batch.state = "cleaned"
             _logger.info("loadtest batch %s cleaned", batch.id)
