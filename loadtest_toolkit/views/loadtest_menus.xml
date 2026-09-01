@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <menuitem
+        id="loadtest_root_menu"
+        name="Load Testing"
+        groups="base.group_system"
+        sequence="900"
+        web_icon="loadtest_toolkit,static/description/icon.png"
+    />
+    <menuitem id="loadtest_scenario_menu" name="Scenarios" parent="loadtest_root_menu" action="loadtest_scenario_action" sequence="10" />
+    <menuitem id="loadtest_run_menu" name="Runs" parent="loadtest_root_menu" action="loadtest_run_action" sequence="20" />
+    <menuitem id="loadtest_batch_menu" name="Data Batches" parent="loadtest_root_menu" action="loadtest_batch_action" sequence="30" />
+    <menuitem id="loadtest_config_menu" name="Configuration" parent="loadtest_root_menu" sequence="90" />
+    <menuitem id="loadtest_journey_menu" name="Journeys" parent="loadtest_config_menu" action="loadtest_journey_action" sequence="10" />
+</odoo>

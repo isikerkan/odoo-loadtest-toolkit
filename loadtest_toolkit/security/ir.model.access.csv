@@ -1,2 +1,8 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_loadtest_batch_system,loadtest.batch system,model_loadtest_batch,base.group_system,1,1,1,1
+access_loadtest_journey_system,loadtest.journey system,model_loadtest_journey,base.group_system,1,1,1,1
+access_loadtest_scenario_system,loadtest.scenario system,model_loadtest_scenario,base.group_system,1,1,1,1
+access_loadtest_scenario_journey_system,loadtest.scenario.journey system,model_loadtest_scenario_journey,base.group_system,1,1,1,1
+access_loadtest_run_system,loadtest.run system,model_loadtest_run,base.group_system,1,1,1,1
+access_loadtest_run_process_system,loadtest.run.process system,model_loadtest_run_process,base.group_system,1,1,1,1
+access_loadtest_run_result_system,loadtest.run.result system,model_loadtest_run_result,base.group_system,1,1,1,1

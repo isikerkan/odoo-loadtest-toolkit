@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="loadtest_journey_view_list" model="ir.ui.view">
+        <field name="name">loadtest.journey.list</field>
+        <field name="model">loadtest.journey</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle" />
+                <field name="name" />
+                <field name="code" />
+                <field name="description" />
+                <field name="active" />
+            </list>
+        </field>
+    </record>
+    <record id="loadtest_journey_action" model="ir.actions.act_window">
+        <field name="name">Journeys</field>
+        <field name="res_model">loadtest.journey</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="loadtest_scenario_view_form" model="ir.ui.view">
+        <field name="name">loadtest.scenario.form</field>
+        <field name="model">loadtest.scenario</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_new_run" type="object" string="New Run" class="btn-primary" />
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_runs" type="object" class="oe_stat_button" icon="fa-play">
+                            <field name="run_count" widget="statinfo" string="Runs" />
+                        </button>
+                    </div>
+                    <group>
+                        <group string="Scenario">
+                            <field name="name" />
+                            <field name="batch_id" />
+                            <field name="target_url" />
+                        </group>
+                        <group string="Load Profile">
+                            <field name="user_count" />
+                            <field name="spawn_rate" />
+                            <field name="duration" />
+                            <field name="worker_count" />
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Journey Mix">
+                            <field name="journey_line_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle" />
+                                    <field name="journey_id" />
+                                    <field name="weight" />
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Description">
+                            <field name="description" nolabel="1" />
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="loadtest_scenario_view_list" model="ir.ui.view">
+        <field name="name">loadtest.scenario.list</field>
+        <field name="model">loadtest.scenario</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name" />
+                <field name="batch_id" />
+                <field name="user_count" />
+                <field name="duration" />
+                <field name="worker_count" />
+                <field name="run_count" />
+            </list>
+        </field>
+    </record>
+    <record id="loadtest_scenario_action" model="ir.actions.act_window">
+        <field name="name">Scenarios</field>
+        <field name="res_model">loadtest.scenario</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

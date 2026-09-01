@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="loadtest_run_view_form" model="ir.ui.view">
+        <field name="name">loadtest.run.form</field>
+        <field name="model">loadtest.run</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_start" type="object" string="Start" class="btn-primary" invisible="state == 'running'" />
+                    <button name="action_stop" type="object" string="Stop" class="btn-danger" invisible="state != 'running'" confirm="Stop this run now? Results collected so far are kept." />
+                    <button name="action_restart" type="object" string="Restart" invisible="state != 'running'" confirm="Stop and start this run again? Current results are discarded." />
+                    <button name="action_repeat" type="object" string="Repeat" invisible="state not in ('done', 'failed')" />
+                    <button name="action_refresh" type="object" string="Refresh" invisible="state != 'running'" />
+                    <button name="action_open_sentry" type="object" string="Open in Sentry" invisible="not sentry_url" />
+                    <field name="state" widget="statusbar" statusbar_visible="draft,running,done" />
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Run">
+                            <field name="name" />
+                            <field name="scenario_id" readonly="state != 'draft'" />
+                            <field name="batch_id" />
+                            <field name="started_at" />
+                            <field name="ended_at" />
+                            <field name="port" invisible="not port" />
+                        </group>
+                        <group string="Live" invisible="state != 'running'">
+                            <field name="live_state" />
+                            <field name="live_users" />
+                            <field name="live_rps" />
+                            <field name="live_requests" />
+                            <field name="live_failures" />
+                            <field name="live_fail_ratio" widget="percentage" />
+                        </group>
+                        <group string="Summary" invisible="state not in ('done', 'failed')">
+                            <field name="total_requests" />
+                            <field name="total_failures" />
+                            <field name="failure_ratio" widget="percentage" />
+                            <field name="rps_avg" />
+                            <field name="p50" />
+                            <field name="p95" />
+                            <field name="p99" />
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Results per Endpoint">
+                            <field name="result_ids">
+                                <list>
+                                    <field name="method" />
+                                    <field name="name" />
+                                    <field name="requests" sum="Total" />
+                                    <field name="failures" sum="Total" />
+                                    <field name="median" />
+                                    <field name="avg" />
+                                    <field name="p95" />
+                                    <field name="p99" />
+                                    <field name="rps" />
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Processes">
+                            <field name="process_ids">
+                                <list>
+                                    <field name="role" />
+                                    <field name="pid" />
+                                    <field name="alive" />
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Log">
+                            <field name="log_excerpt" nolabel="1" />
+                        </page>
+                        <page string="Notes">
+                            <field name="notes" nolabel="1" />
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="loadtest_run_view_list" model="ir.ui.view">
+        <field name="name">loadtest.run.list</field>
+        <field name="model">loadtest.run</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name" />
+                <field name="scenario_id" />
+                <field name="started_at" />
+                <field name="ended_at" />
+                <field name="total_requests" />
+                <field name="failure_ratio" widget="percentage" />
+                <field name="rps_avg" />
+                <field name="p95" />
+                <field name="state" widget="badge" decoration-success="state == 'done'" decoration-info="state == 'running'" decoration-danger="state == 'failed'" />
+            </list>
+        </field>
+    </record>
+    <record id="loadtest_run_action" model="ir.actions.act_window">
+        <field name="name">Runs</field>
+        <field name="res_model">loadtest.run</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

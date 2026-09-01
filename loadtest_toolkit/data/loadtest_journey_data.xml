@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo noupdate="1">
+    <record id="journey_browser" model="loadtest.journey">
+        <field name="name">Browser</field>
+        <field name="code">Browser</field>
+        <field name="sequence">10</field>
+        <field name="description">Read-only user: partner/product/order lists, form reads, product search.</field>
+    </record>
+    <record id="journey_sales_rep" model="loadtest.journey">
+        <field name="name">Sales Rep</field>
+        <field name="code">SalesRep</field>
+        <field name="sequence">20</field>
+        <field name="description">Creates and confirms sale orders and discusses them in the chatter.</field>
+    </record>
+    <record id="journey_chatter" model="loadtest.journey">
+        <field name="name">Chatter</field>
+        <field name="code">Chatter</field>
+        <field name="sequence">30</field>
+        <field name="description">Posts notes on accounts and reads chatter threads.</field>
+    </record>
+    <record id="journey_catalog_editor" model="loadtest.journey">
+        <field name="name">Catalog Editor</field>
+        <field name="code">CatalogEditor</field>
+        <field name="sequence">40</field>
+        <field name="description">Creates partners and products (needs Sales Manager rights).</field>
+    </record>
+</odoo>
