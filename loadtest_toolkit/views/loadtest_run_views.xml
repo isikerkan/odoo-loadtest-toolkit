@@ -35,7 +35,9 @@
                         </group>
                         <group string="System (live)" invisible="state != 'running'">
                             <field name="sys_cpu" />
+                            <field name="cpu_cores" />
                             <field name="sys_mem" />
+                            <field name="sys_mem_used_gb" />
                             <field name="sys_rss_mb" />
                             <field name="sys_pg_active" />
                             <field name="sys_pg_total" />
@@ -54,6 +56,9 @@
                             <field name="max_cpu" />
                             <field name="avg_mem" />
                             <field name="max_mem" />
+                            <field name="avg_mem_used_gb" />
+                            <field name="max_mem_used_gb" />
+                            <field name="cpu_cores" />
                             <field name="avg_rss_mb" />
                             <field name="max_rss_mb" />
                             <field name="avg_pg_active" />
@@ -86,6 +91,7 @@
                                     <field name="requests" />
                                     <field name="cpu" />
                                     <field name="mem" />
+                                    <field name="mem_used_gb" />
                                     <field name="rss_mb" />
                                     <field name="pg_active" />
                                     <field name="pg_total" />

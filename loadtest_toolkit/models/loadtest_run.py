@@ -63,6 +63,7 @@ class LoadtestRun(models.Model):
     port = fields.Integer(readonly=True)
     run_dir = fields.Char(readonly=True)
     process_ids = fields.One2many("loadtest.run.process", "run_id", readonly=True)
+    poll_failures = fields.Integer(readonly=True, help="Consecutive polls without a Locust answer")
 
     # live (polled from Locust while running)
     live_state = fields.Char(readonly=True)
@@ -87,6 +88,8 @@ class LoadtestRun(models.Model):
     sys_cpu = fields.Float(readonly=True, string="CPU %")
     sys_mem = fields.Float(readonly=True, string="RAM %")
     sys_rss_mb = fields.Float(readonly=True, string="Odoo RSS (MB)")
+    sys_mem_used_gb = fields.Float(readonly=True, string="RAM used (GB)", digits=(12, 2))
+    cpu_cores = fields.Integer(readonly=True, string="CPU cores")
     sys_pg_active = fields.Integer(readonly=True, string="PG active")
     sys_pg_total = fields.Integer(readonly=True, string="PG connections")
 
@@ -95,6 +98,8 @@ class LoadtestRun(models.Model):
     max_cpu = fields.Float(readonly=True, string="Max CPU %")
     avg_mem = fields.Float(readonly=True, string="Avg RAM %")
     max_mem = fields.Float(readonly=True, string="Max RAM %")
+    avg_mem_used_gb = fields.Float(readonly=True, string="Avg RAM used (GB)", digits=(12, 2))
+    max_mem_used_gb = fields.Float(readonly=True, string="Max RAM used (GB)", digits=(12, 2))
     avg_rss_mb = fields.Float(readonly=True, string="Avg RSS (MB)")
     max_rss_mb = fields.Float(readonly=True, string="Max RSS (MB)")
     avg_pg_active = fields.Float(readonly=True, string="Avg PG active")
@@ -136,6 +141,10 @@ class LoadtestRun(models.Model):
 
     @staticmethod
     def _pid_alive(pid):
+        """True only for a live, non-zombie process. A finished child we
+        spawned stays as a zombie until reaped (we drop the Popen
+        object), and os.kill(pid, 0) succeeds on zombies - which kept
+        runs 'running' forever. Reap our own zombies on the way."""
         if not pid:
             return False
         try:
@@ -144,6 +153,16 @@ class LoadtestRun(models.Model):
             return False
         except PermissionError:
             return True
+        try:
+            with open(f"/proc/{pid}/stat") as fh:
+                if fh.read().rsplit(")", 1)[1].split()[0] == "Z":
+                    try:
+                        os.waitpid(pid, os.WNOHANG)
+                    except ChildProcessError:
+                        pass
+                    return False
+        except OSError:
+            return False
         return True
 
     def _locustfile(self):
@@ -224,6 +243,7 @@ class LoadtestRun(models.Model):
                 "total_requests": 0, "total_failures": 0, "failure_ratio": 0, "rps_avg": 0,
                 "p50": 0, "p95": 0, "p99": 0, "log_excerpt": False,
                 "result_ids": [(5, 0, 0)], "process_ids": [(5, 0, 0)], "sample_ids": [(5, 0, 0)],
+                "poll_failures": 0,
                 "sys_cpu": 0, "sys_mem": 0, "sys_rss_mb": 0, "sys_pg_active": 0, "sys_pg_total": 0,
                 "avg_cpu": 0, "max_cpu": 0, "avg_mem": 0, "max_mem": 0,
                 "avg_rss_mb": 0, "max_rss_mb": 0, "avg_pg_active": 0, "max_pg_active": 0,
@@ -254,6 +274,8 @@ class LoadtestRun(models.Model):
             snapshot["cpu"] = psutil.cpu_percent(interval=None)
             memory = psutil.virtual_memory()
             snapshot["mem"] = memory.percent
+            snapshot["mem_used_gb"] = memory.used / (1024 ** 3)
+            snapshot["cores"] = psutil.cpu_count() or 0
             snapshot["rss_mb"] = psutil.Process().memory_info().rss / (1024 * 1024)
         self.env.cr.execute(
             """SELECT count(*) FILTER (WHERE state = 'active'), count(*)
@@ -270,6 +292,7 @@ class LoadtestRun(models.Model):
         self.env["loadtest.run.sample"].create({
             "run_id": self.id,
             "cpu": snap.get("cpu", 0.0), "mem": snap.get("mem", 0.0),
+            "mem_used_gb": snap.get("mem_used_gb", 0.0),
             "rss_mb": snap.get("rss_mb", 0.0),
             "pg_active": snap["pg_active"], "pg_total": snap["pg_total"],
             "users": (stats or {}).get("user_count", 0),
@@ -279,6 +302,8 @@ class LoadtestRun(models.Model):
         })
         self.write({
             "sys_cpu": snap.get("cpu", 0.0), "sys_mem": snap.get("mem", 0.0),
+            "sys_mem_used_gb": snap.get("mem_used_gb", 0.0),
+            "cpu_cores": snap.get("cores", 0),
             "sys_rss_mb": snap.get("rss_mb", 0.0),
             "sys_pg_active": snap["pg_active"], "sys_pg_total": snap["pg_total"],
         })
@@ -292,6 +317,8 @@ class LoadtestRun(models.Model):
         return {
             "avg_cpu": sum(samples.mapped("cpu")) / count, "max_cpu": max(samples.mapped("cpu")),
             "avg_mem": sum(samples.mapped("mem")) / count, "max_mem": max(samples.mapped("mem")),
+            "avg_mem_used_gb": sum(samples.mapped("mem_used_gb")) / count,
+            "max_mem_used_gb": max(samples.mapped("mem_used_gb")),
             "avg_rss_mb": sum(samples.mapped("rss_mb")) / count, "max_rss_mb": max(samples.mapped("rss_mb")),
             "avg_pg_active": sum(samples.mapped("pg_active")) / count,
             "max_pg_active": max(samples.mapped("pg_active")),
@@ -312,8 +339,15 @@ class LoadtestRun(models.Model):
             except Exception:
                 _logger.debug("loadtest sample failed", exc_info=True)
             if stats:
+                run.poll_failures = 0
                 run._apply_live_stats(stats)
-            if not alive or (stats and stats.get("state") in ("stopped", "missing")):
+            else:
+                run.poll_failures += 1
+            if (
+                not alive
+                or (stats and stats.get("state") in ("stopped", "missing"))
+                or run.poll_failures >= 3
+            ):
                 run._finalize()
         return True
 
@@ -476,6 +510,7 @@ class LoadtestRunSample(models.Model):
     sampled_at = fields.Datetime(default=fields.Datetime.now, required=True)
     cpu = fields.Float(string="CPU %")
     mem = fields.Float(string="RAM %")
+    mem_used_gb = fields.Float(string="RAM used (GB)", digits=(12, 2))
     rss_mb = fields.Float(string="Odoo RSS (MB)")
     pg_active = fields.Integer(string="PG active")
     pg_total = fields.Integer(string="PG connections")

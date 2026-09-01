@@ -125,6 +125,16 @@ class TestLoadtestRun(TransactionCase):
         self.assertEqual(len(run.result_ids), 2)
         self.assertTrue(self.killpg.called)
 
+    def test_poll_failure_fallback_finalizes(self):
+        run = self._run()
+        run.action_start()
+        with patch.object(type(run), "_locust_get", return_value=None):
+            run.action_refresh()
+            run.action_refresh()
+            self.assertEqual(run.state, "running")
+            run.action_refresh()  # third consecutive failure
+        self.assertEqual(run.state, "failed")
+
     def test_dead_process_without_csv_fails(self):
         run = self._run()
         run.action_start()
@@ -141,6 +151,8 @@ class TestLoadtestRun(TransactionCase):
         self.assertEqual(len(run.sample_ids), 2)
         self.assertEqual(run.sample_ids[0].users, 5)
         self.assertGreater(run.sys_pg_total, 0)
+        self.assertGreater(run.sys_mem_used_gb, 0)
+        self.assertGreater(run.cpu_cores, 0)
         with open(run._csv_prefix() + "_stats.csv", "w") as fh:
             fh.write(CSV)
         with patch.object(type(run), "_locust_get", return_value=None), patch(
