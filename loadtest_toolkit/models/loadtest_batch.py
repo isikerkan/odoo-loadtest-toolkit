@@ -95,15 +95,18 @@ class LoadtestBatch(models.Model):
             )
 
     def _next_user_index(self):
-        last = self.env["res.users"].sudo().with_context(active_test=False).search(
-            [("login", "=like", "loadtest\\_%")], order="login desc", limit=1
+        # numeric max, not "order login desc": lexicographically
+        # loadtest_999 > loadtest_1000, which produced duplicate logins
+        users = self.env["res.users"].sudo().with_context(active_test=False).search(
+            [("login", "=like", "loadtest\\_%")]
         )
-        if not last:
-            return 1
-        try:
-            return int(last.login.rsplit("_", 1)[1]) + 1
-        except ValueError:
-            return 1
+        indexes = []
+        for login in users.mapped("login"):
+            try:
+                indexes.append(int(login.rsplit("_", 1)[1]))
+            except ValueError:
+                continue
+        return max(indexes, default=0) + 1
 
     def _generate_users(self):
         self.ensure_one()
