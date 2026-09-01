@@ -25,6 +25,20 @@
                     <field name="state" widget="statusbar" />
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box" invisible="state == 'draft'">
+                        <button name="action_view_users" type="object" class="oe_stat_button" icon="fa-users">
+                            <field name="generated_user_count" widget="statinfo" string="Users" />
+                        </button>
+                        <button name="action_view_partners" type="object" class="oe_stat_button" icon="fa-address-book">
+                            <field name="generated_partner_count" widget="statinfo" string="Partners" />
+                        </button>
+                        <button name="action_view_products" type="object" class="oe_stat_button" icon="fa-cubes">
+                            <field name="generated_product_count" widget="statinfo" string="Products" />
+                        </button>
+                        <button name="action_view_orders" type="object" class="oe_stat_button" icon="fa-shopping-cart">
+                            <field name="generated_order_count" widget="statinfo" string="Orders" />
+                        </button>
+                    </div>
                     <group>
                         <group string="Batch">
                             <field name="name" />
@@ -41,6 +55,15 @@
                     <notebook>
                         <page string="Test Users">
                             <field name="user_ids" readonly="1" />
+                        </page>
+                        <page string="Partners">
+                            <field name="partner_ids" readonly="1" />
+                        </page>
+                        <page string="Products">
+                            <field name="product_ids" readonly="1" />
+                        </page>
+                        <page string="Orders">
+                            <field name="order_ids" readonly="1" />
                         </page>
                     </notebook>
                 </sheet>

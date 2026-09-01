@@ -2,7 +2,7 @@
 {
     "name": "Load Test Toolkit",
     "summary": "Generate load-test users and data batches, with guarded cleanup",
-    "version": "18.0.1.0.0",
+    "version": "18.0.1.1.0",
     "category": "Extra Tools",
     "website": "https://github.com/sverkanisik/odoo-loadtest-toolkit",
     "author": "isikerkan, sverkanisik",

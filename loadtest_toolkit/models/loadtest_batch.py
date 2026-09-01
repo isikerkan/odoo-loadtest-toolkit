@@ -41,6 +41,43 @@ class LoadtestBatch(models.Model):
 
     generated_summary = fields.Char(readonly=True)
 
+    # live counts of what the batch owns, for the smart buttons
+    generated_user_count = fields.Integer(compute="_compute_generated_counts")
+    generated_partner_count = fields.Integer(compute="_compute_generated_counts")
+    generated_product_count = fields.Integer(compute="_compute_generated_counts")
+    generated_order_count = fields.Integer(compute="_compute_generated_counts")
+
+    @api.depends("user_ids", "partner_ids", "product_ids", "order_ids")
+    def _compute_generated_counts(self):
+        for batch in self:
+            batch.generated_user_count = len(batch.user_ids)
+            batch.generated_partner_count = len(batch.partner_ids)
+            batch.generated_product_count = len(batch.product_ids)
+            batch.generated_order_count = len(batch.order_ids)
+
+    def _action_view(self, model, records, name):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": name,
+            "res_model": model,
+            "view_mode": "list,form",
+            "domain": [("id", "in", records.ids)],
+            "context": {"active_test": False},
+        }
+
+    def action_view_users(self):
+        return self._action_view("res.users", self.user_ids, "Test Users")
+
+    def action_view_partners(self):
+        return self._action_view("res.partner", self.partner_ids, "Generated Partners")
+
+    def action_view_products(self):
+        return self._action_view("product.product", self.product_ids, "Generated Products")
+
+    def action_view_orders(self):
+        return self._action_view("sale.order", self.order_ids, "Generated Orders")
+
     # ------------------------------------------------------------------
     @api.model
     def _check_enabled(self):
