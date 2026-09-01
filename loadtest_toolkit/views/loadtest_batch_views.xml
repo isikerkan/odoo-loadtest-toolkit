@@ -109,5 +109,6 @@
         action="loadtest_batch_action"
         groups="base.group_system"
         sequence="900"
+        web_icon="loadtest_toolkit,static/description/icon.png"
     />
 </odoo>
