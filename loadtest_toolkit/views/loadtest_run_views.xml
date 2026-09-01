@@ -32,6 +32,13 @@
                             <field name="live_failures" />
                             <field name="live_fail_ratio" widget="percentage" />
                         </group>
+                        <group string="System (live)" invisible="state != 'running'">
+                            <field name="sys_cpu" />
+                            <field name="sys_mem" />
+                            <field name="sys_rss_mb" />
+                            <field name="sys_pg_active" />
+                            <field name="sys_pg_total" />
+                        </group>
                         <group string="Summary" invisible="state not in ('done', 'failed')">
                             <field name="total_requests" />
                             <field name="total_failures" />
@@ -40,6 +47,16 @@
                             <field name="p50" />
                             <field name="p95" />
                             <field name="p99" />
+                        </group>
+                        <group string="System Summary" invisible="state not in ('done', 'failed')">
+                            <field name="avg_cpu" />
+                            <field name="max_cpu" />
+                            <field name="avg_mem" />
+                            <field name="max_mem" />
+                            <field name="avg_rss_mb" />
+                            <field name="max_rss_mb" />
+                            <field name="avg_pg_active" />
+                            <field name="max_pg_active" />
                         </group>
                     </group>
                     <notebook>
@@ -55,6 +72,22 @@
                                     <field name="p95" />
                                     <field name="p99" />
                                     <field name="rps" />
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Samples">
+                            <field name="sample_ids">
+                                <list>
+                                    <field name="sampled_at" />
+                                    <field name="users" />
+                                    <field name="rps" />
+                                    <field name="fail_ratio" widget="percentage" />
+                                    <field name="requests" />
+                                    <field name="cpu" />
+                                    <field name="mem" />
+                                    <field name="rss_mb" />
+                                    <field name="pg_active" />
+                                    <field name="pg_total" />
                                 </list>
                             </field>
                         </page>

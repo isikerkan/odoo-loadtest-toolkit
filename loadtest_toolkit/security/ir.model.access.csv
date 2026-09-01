@@ -6,3 +6,4 @@ access_loadtest_scenario_journey_system,loadtest.scenario.journey system,model_l
 access_loadtest_run_system,loadtest.run system,model_loadtest_run,base.group_system,1,1,1,1
 access_loadtest_run_process_system,loadtest.run.process system,model_loadtest_run_process,base.group_system,1,1,1,1
 access_loadtest_run_result_system,loadtest.run.result system,model_loadtest_run_result,base.group_system,1,1,1,1
+access_loadtest_run_sample_system,loadtest.run.sample system,model_loadtest_run_sample,base.group_system,1,1,1,1

@@ -20,6 +20,11 @@ import time
 
 import requests
 
+try:
+    import psutil
+except ImportError:
+    psutil = None
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import config
@@ -65,6 +70,24 @@ class LoadtestRun(models.Model):
     p95 = fields.Float(readonly=True, string="p95 (ms)")
     p99 = fields.Float(readonly=True, string="p99 (ms)")
     result_ids = fields.One2many("loadtest.run.result", "run_id", readonly=True)
+    sample_ids = fields.One2many("loadtest.run.sample", "run_id", readonly=True)
+
+    # latest system sample (live view)
+    sys_cpu = fields.Float(readonly=True, string="CPU %")
+    sys_mem = fields.Float(readonly=True, string="RAM %")
+    sys_rss_mb = fields.Float(readonly=True, string="Odoo RSS (MB)")
+    sys_pg_active = fields.Integer(readonly=True, string="PG active")
+    sys_pg_total = fields.Integer(readonly=True, string="PG connections")
+
+    # system summary over the whole run
+    avg_cpu = fields.Float(readonly=True, string="Avg CPU %")
+    max_cpu = fields.Float(readonly=True, string="Max CPU %")
+    avg_mem = fields.Float(readonly=True, string="Avg RAM %")
+    max_mem = fields.Float(readonly=True, string="Max RAM %")
+    avg_rss_mb = fields.Float(readonly=True, string="Avg RSS (MB)")
+    max_rss_mb = fields.Float(readonly=True, string="Max RSS (MB)")
+    avg_pg_active = fields.Float(readonly=True, string="Avg PG active")
+    max_pg_active = fields.Integer(readonly=True, string="Max PG active")
     log_excerpt = fields.Text(readonly=True)
     notes = fields.Text()
     sentry_url = fields.Char(compute="_compute_sentry_url")
@@ -189,7 +212,10 @@ class LoadtestRun(models.Model):
                 "live_requests": 0, "live_failures": 0,
                 "total_requests": 0, "total_failures": 0, "failure_ratio": 0, "rps_avg": 0,
                 "p50": 0, "p95": 0, "p99": 0, "log_excerpt": False,
-                "result_ids": [(5, 0, 0)], "process_ids": [(5, 0, 0)],
+                "result_ids": [(5, 0, 0)], "process_ids": [(5, 0, 0)], "sample_ids": [(5, 0, 0)],
+                "sys_cpu": 0, "sys_mem": 0, "sys_rss_mb": 0, "sys_pg_active": 0, "sys_pg_total": 0,
+                "avg_cpu": 0, "max_cpu": 0, "avg_mem": 0, "max_mem": 0,
+                "avg_rss_mb": 0, "max_rss_mb": 0, "avg_pg_active": 0, "max_pg_active": 0,
             })
             processes = [(0, 0, {"role": "master", "pid": run._spawn(run._master_command(), "master.log")})]
             for i in range(scenario.worker_count):
@@ -208,11 +234,67 @@ class LoadtestRun(models.Model):
         except (requests.RequestException, ValueError):
             return None
 
+    def _system_snapshot(self):
+        """CPU/RAM/RSS of this host and PG connections of this database.
+        Samples the machine Odoo runs on - when target_url points at a
+        remote instance, these numbers describe the local host only."""
+        snapshot = {}
+        if psutil is not None:
+            snapshot["cpu"] = psutil.cpu_percent(interval=None)
+            memory = psutil.virtual_memory()
+            snapshot["mem"] = memory.percent
+            snapshot["rss_mb"] = psutil.Process().memory_info().rss / (1024 * 1024)
+        self.env.cr.execute(
+            """SELECT count(*) FILTER (WHERE state = 'active'), count(*)
+               FROM pg_stat_activity WHERE datname = current_database()"""
+        )
+        active, total = self.env.cr.fetchone()
+        snapshot["pg_active"], snapshot["pg_total"] = active or 0, total or 0
+        return snapshot
+
+    def _take_sample(self, stats):
+        self.ensure_one()
+        snap = self._system_snapshot()
+        total = next((s for s in (stats or {}).get("stats", []) if s.get("name") == "Aggregated"), {})
+        self.env["loadtest.run.sample"].create({
+            "run_id": self.id,
+            "cpu": snap.get("cpu", 0.0), "mem": snap.get("mem", 0.0),
+            "rss_mb": snap.get("rss_mb", 0.0),
+            "pg_active": snap["pg_active"], "pg_total": snap["pg_total"],
+            "users": (stats or {}).get("user_count", 0),
+            "rps": (stats or {}).get("total_rps", 0.0),
+            "fail_ratio": (stats or {}).get("fail_ratio", 0.0),
+            "requests": total.get("num_requests", 0),
+        })
+        self.write({
+            "sys_cpu": snap.get("cpu", 0.0), "sys_mem": snap.get("mem", 0.0),
+            "sys_rss_mb": snap.get("rss_mb", 0.0),
+            "sys_pg_active": snap["pg_active"], "sys_pg_total": snap["pg_total"],
+        })
+
+    def _summarize_samples(self):
+        self.ensure_one()
+        samples = self.sample_ids
+        if not samples:
+            return {}
+        count = len(samples)
+        return {
+            "avg_cpu": sum(samples.mapped("cpu")) / count, "max_cpu": max(samples.mapped("cpu")),
+            "avg_mem": sum(samples.mapped("mem")) / count, "max_mem": max(samples.mapped("mem")),
+            "avg_rss_mb": sum(samples.mapped("rss_mb")) / count, "max_rss_mb": max(samples.mapped("rss_mb")),
+            "avg_pg_active": sum(samples.mapped("pg_active")) / count,
+            "max_pg_active": max(samples.mapped("pg_active")),
+        }
+
     def action_refresh(self):
         for run in self.filtered(lambda r: r.state in RUNNING_STATES):
             master = run.process_ids.filtered(lambda p: p.role == "master")[:1]
             alive = self._pid_alive(master.pid)
             stats = run._locust_get("/stats/requests") if alive else None
+            try:
+                run._take_sample(stats)
+            except Exception:
+                _logger.debug("loadtest sample failed", exc_info=True)
             if stats:
                 run._apply_live_stats(stats)
             if not alive or (stats and stats.get("state") in ("stopped", "missing")):
@@ -294,12 +376,13 @@ class LoadtestRun(models.Model):
         if self.run_dir and os.path.exists(log_path):
             with open(log_path, errors="replace") as fh:
                 excerpt = "".join(fh.readlines()[-40:])
-        self.write({
+        self.write(dict(self._summarize_samples(),
+            **{
             "state": "done" if has_results else "failed",
             "ended_at": fields.Datetime.now(),
             "live_state": "stopped",
             "log_excerpt": excerpt,
-        })
+        }))
         _logger.info("loadtest run %s finished: %s", self.id, self.state)
 
     def action_stop(self):
@@ -364,3 +447,23 @@ class LoadtestRunResult(models.Model):
     p95 = fields.Float(string="p95 (ms)")
     p99 = fields.Float(string="p99 (ms)")
     rps = fields.Float(string="req/s", digits=(12, 2))
+
+
+class LoadtestRunSample(models.Model):
+    """One point on the run timeline: system + Locust state together."""
+
+    _name = "loadtest.run.sample"
+    _description = "Load Test Run Sample"
+    _order = "id"
+
+    run_id = fields.Many2one("loadtest.run", required=True, ondelete="cascade")
+    sampled_at = fields.Datetime(default=fields.Datetime.now, required=True)
+    cpu = fields.Float(string="CPU %")
+    mem = fields.Float(string="RAM %")
+    rss_mb = fields.Float(string="Odoo RSS (MB)")
+    pg_active = fields.Integer(string="PG active")
+    pg_total = fields.Integer(string="PG connections")
+    users = fields.Integer()
+    rps = fields.Float(digits=(12, 1))
+    fail_ratio = fields.Float(digits=(6, 4))
+    requests = fields.Integer()

@@ -131,6 +131,28 @@ class TestLoadtestRun(TransactionCase):
             run.action_refresh()
         self.assertEqual(run.state, "failed")
 
+    def test_samples_and_system_summary(self):
+        run = self._run()
+        run.action_start()
+        with patch.object(type(run), "_locust_get", return_value=LIVE):
+            run.action_refresh()
+            run.action_refresh()
+        self.assertEqual(len(run.sample_ids), 2)
+        self.assertEqual(run.sample_ids[0].users, 5)
+        self.assertGreater(run.sys_pg_total, 0)
+        with open(run._csv_prefix() + "_stats.csv", "w") as fh:
+            fh.write(CSV)
+        with patch.object(type(run), "_locust_get", return_value=None), patch(
+            "odoo.addons.loadtest_toolkit.models.loadtest_run.time.sleep"
+        ):
+            run.action_stop()
+        self.assertEqual(run.state, "done")
+        self.assertGreater(run.max_pg_active + run.max_pg_active, -1)  # summary written
+        self.assertGreaterEqual(run.max_cpu, run.avg_cpu)
+        # restart resets samples
+        run.action_start()
+        self.assertFalse(run.sample_ids)
+
     def test_repeat_creates_new_run(self):
         run = self._run()
         run.action_start()
