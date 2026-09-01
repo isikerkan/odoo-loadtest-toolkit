@@ -53,8 +53,13 @@ the batch grants them.
 
 - Run artifacts (Locust log + CSV) live under `<data_dir>/loadtest/run_<id>/`
 - Locust's web UI is bound to 127.0.0.1 on a per-run port (shown on the run)
-- Wrong batch password → Odoo's login cooldown blocks those logins for
-  a few minutes, even for a corrected next run
+- Wrong batch password → Odoo's login cooldown blocks further logins
+  for a few minutes, even with the corrected password. The counter is
+  **per source IP** (`res.users._assert_can_auth`), and all Locust
+  users share one IP — a single bad-password run poisons every
+  subsequent login and floods the logs/Sentry with "Too many login
+  failures". On load-test instances raise the threshold:
+  `base.login_cooldown_after = 50` (system parameter; `0` disables)
 - A threaded dev server measures that setup, not Odoo capacity; point
   `target_url` at a `workers > 0` instance for capacity numbers
 
