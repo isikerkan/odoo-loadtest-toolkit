@@ -24,9 +24,9 @@ class LoadtestBatch(models.Model):
 
     name = fields.Char(default="Load Test Batch", required=True)
     state = fields.Selection(
-        [("draft", "Draft"), ("generated", "Generated"), ("cleaned", "Cleaned")],
-        default="draft",
-        required=True,
+        [("draft", "Empty"), ("partial", "Partially Generated"), ("generated", "Generated")],
+        compute="_compute_state",
+        store=True,
     )
     user_count = fields.Integer(default=10, help="Test users to create (login loadtest_NNN)")
     partner_count = fields.Integer(default=100)
@@ -39,13 +39,17 @@ class LoadtestBatch(models.Model):
     product_ids = fields.Many2many("product.product", "loadtest_batch_product_rel", string="Generated Products")
     order_ids = fields.Many2many("sale.order", "loadtest_batch_order_rel", string="Generated Orders")
 
-    generated_summary = fields.Char(readonly=True)
-
     # live counts of what the batch owns, for the smart buttons
     generated_user_count = fields.Integer(compute="_compute_generated_counts")
     generated_partner_count = fields.Integer(compute="_compute_generated_counts")
     generated_product_count = fields.Integer(compute="_compute_generated_counts")
     generated_order_count = fields.Integer(compute="_compute_generated_counts")
+
+    @api.depends("user_ids", "partner_ids", "product_ids", "order_ids")
+    def _compute_state(self):
+        for batch in self:
+            present = [bool(batch.user_ids), bool(batch.partner_ids), bool(batch.product_ids), bool(batch.order_ids)]
+            batch.state = "generated" if all(present) else ("partial" if any(present) else "draft")
 
     @api.depends("user_ids", "partner_ids", "product_ids", "order_ids")
     def _compute_generated_counts(self):
@@ -198,51 +202,119 @@ class LoadtestBatch(models.Model):
         return orders
 
     # ------------------------------------------------------------------
-    def action_generate(self):
+    # per-type generation
+    def action_generate_users(self):
         self._check_enabled()
         for batch in self:
-            if batch.state != "draft":
-                raise UserError("Batch already generated.")
-            users = batch._generate_users()
-            partners = batch._generate_partners()
-            products = batch._generate_products()
-            orders = batch._generate_orders(users, partners, products)
-            batch.generated_summary = (
-                f"{len(users)} users, {len(partners)} partners, "
-                f"{len(products)} products, {len(orders)} orders"
+            if batch.user_ids:
+                raise UserError("Users already generated for this batch.")
+            batch._generate_users()
+        return True
+
+    def action_generate_partners(self):
+        self._check_enabled()
+        for batch in self:
+            if batch.partner_ids:
+                raise UserError("Partners already generated for this batch.")
+            batch._generate_partners()
+        return True
+
+    def action_generate_products(self):
+        self._check_enabled()
+        for batch in self:
+            if batch.product_ids:
+                raise UserError("Products already generated for this batch.")
+            batch._generate_products()
+        return True
+
+    def action_generate_orders(self):
+        self._check_enabled()
+        for batch in self:
+            if batch.order_ids:
+                raise UserError("Orders already generated for this batch.")
+            if not (batch.user_ids and batch.partner_ids and batch.product_ids):
+                raise UserError("Generate users, partners and products before orders.")
+            batch._generate_orders(batch.user_ids, batch.partner_ids, batch.product_ids)
+        return True
+
+    def action_generate(self):
+        """Generate everything that is still missing, in dependency order."""
+        self._check_enabled()
+        for batch in self:
+            if not batch.user_ids:
+                batch._generate_users()
+            if not batch.partner_ids:
+                batch._generate_partners()
+            if not batch.product_ids:
+                batch._generate_products()
+            if not batch.order_ids:
+                batch._generate_orders(batch.user_ids, batch.partner_ids, batch.product_ids)
+            _logger.info("loadtest batch %s generated: %s", batch.id, batch._summary())
+        return True
+
+    def _summary(self):
+        self.ensure_one()
+        return (
+            f"{len(self.user_ids)} users, {len(self.partner_ids)} partners, "
+            f"{len(self.product_ids)} products, {len(self.order_ids)} orders"
+        )
+
+    # ------------------------------------------------------------------
+    # per-type cleanup (orders first: they reference partners/products)
+    def _unlink_orders(self, orders):
+        orders = orders.sudo().exists()
+        if orders:
+            orders.filtered(lambda o: o.state not in ("draft", "cancel"))._action_cancel()
+            orders.unlink()
+
+    def action_cleanup_orders(self):
+        for batch in self:
+            batch._unlink_orders(batch.order_ids)
+            # orders the test users created during load runs
+            batch._unlink_orders(
+                self.env["sale.order"].sudo().search([("create_uid", "in", batch.user_ids.ids)])
             )
-            batch.state = "generated"
-            _logger.info("loadtest batch %s generated: %s", batch.id, batch.generated_summary)
+            batch.order_ids = [(5, 0, 0)]
+        return True
+
+    def _require_no_orders(self, what):
+        for batch in self:
+            if batch.order_ids:
+                raise UserError(f"Clean up the orders before the {what}.")
+
+    def action_cleanup_products(self):
+        self._require_no_orders("products")
+        for batch in self:
+            batch.product_ids.sudo().exists().unlink()
+            stray = self.env["product.template"].sudo().search([("create_uid", "in", batch.user_ids.ids)])
+            stray.unlink()
+            batch.product_ids = [(5, 0, 0)]
+        return True
+
+    def action_cleanup_partners(self):
+        self._require_no_orders("partners")
+        for batch in self:
+            batch.partner_ids.sudo().exists().unlink()
+            stray = self.env["res.partner"].sudo().search([("create_uid", "in", batch.user_ids.ids)])
+            stray.unlink()
+            batch.partner_ids = [(5, 0, 0)]
+        return True
+
+    def action_cleanup_users(self):
+        self._require_no_orders("users")
+        for batch in self:
+            stray_messages = self.env["mail.message"].sudo().search([("create_uid", "in", batch.user_ids.ids)])
+            stray_messages.unlink()
+            batch.user_ids.sudo().write({"active": False})
+            batch.user_ids = [(5, 0, 0)]
         return True
 
     def action_cleanup(self):
+        """Remove everything the batch owns, in dependency order."""
         for batch in self:
-            if batch.state != "generated":
-                raise UserError("Nothing to clean for this batch.")
-            orders = batch.order_ids.sudo().exists()
-            if orders:
-                orders.filtered(lambda o: o.state not in ("draft", "cancel"))._action_cancel()
-                orders.unlink()
-            # anything else the test users created during load runs
-            stray = (
-                self.env["sale.order"]
-                .sudo()
-                .search([("create_uid", "in", batch.user_ids.ids)])
-            )
-            if stray:
-                stray.filtered(lambda o: o.state not in ("draft", "cancel"))._action_cancel()
-                stray.unlink()
-            batch.product_ids.sudo().exists().unlink()
-            batch.partner_ids.sudo().exists().unlink()
-            # records the test users created themselves during load runs
-            # (partners, products, chatter messages on other records)
-            for model in ("product.template", "res.partner", "mail.message"):
-                stray = self.env[model].sudo().search(
-                    [("create_uid", "in", batch.user_ids.ids)]
-                )
-                if stray:
-                    stray.unlink()
-            batch.user_ids.sudo().write({"active": False})
-            batch.state = "cleaned"
+            batch.action_cleanup_orders()
+            batch.action_cleanup_products()
+            batch.action_cleanup_partners()
+            batch.action_cleanup_users()
             _logger.info("loadtest batch %s cleaned", batch.id)
         return True

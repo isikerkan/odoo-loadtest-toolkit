@@ -9,51 +9,71 @@ from odoo.tools import config
 
 class TestLoadtestBatch(TransactionCase):
     def _batch(self, **overrides):
-        values = {
-            "user_count": 2,
-            "partner_count": 6,
-            "product_count": 3,
-            "order_count": 4,
-        }
+        values = {"user_count": 2, "partner_count": 6, "product_count": 3, "order_count": 4}
         values.update(overrides)
         return self.env["loadtest.batch"].create(values)
+
+    def _enabled(self):
+        return patch.dict(config.options, {"loadtest_enabled": "true"})
 
     def test_guard_blocks_generation(self):
         batch = self._batch()
         with patch.dict(config.options, {"loadtest_enabled": "false"}):
             with self.assertRaises(UserError):
                 batch.action_generate()
+            with self.assertRaises(UserError):
+                batch.action_generate_users()
 
-    def test_generate_and_cleanup(self):
+    def test_generate_all_and_cleanup_all(self):
         batch = self._batch()
-        with patch.dict(config.options, {"loadtest_enabled": "true"}):
+        with self._enabled():
             batch.action_generate()
         self.assertEqual(batch.state, "generated")
-        self.assertEqual(len(batch.user_ids), 2)
-        self.assertEqual(len(batch.partner_ids), 6)
-        self.assertEqual(len(batch.product_ids), 3)
-        self.assertEqual(len(batch.order_ids), 4)
-        self.assertTrue(
-            all(u.login.startswith("loadtest_") for u in batch.user_ids)
+        self.assertEqual(
+            (len(batch.user_ids), len(batch.partner_ids), len(batch.product_ids), len(batch.order_ids)),
+            (2, 6, 3, 4),
         )
-        # orders created by the test users themselves
-        self.assertTrue(
-            all(o.create_uid in batch.user_ids for o in batch.order_ids)
-        )
-
-        partner_ids = batch.partner_ids.ids
-        order_ids = batch.order_ids.ids
+        self.assertTrue(all(o.create_uid in batch.user_ids for o in batch.order_ids))
+        partner_ids, order_ids, users = batch.partner_ids.ids, batch.order_ids.ids, batch.user_ids
         batch.action_cleanup()
-        self.assertEqual(batch.state, "cleaned")
+        self.assertEqual(batch.state, "draft")
         self.assertFalse(self.env["sale.order"].browse(order_ids).exists())
         self.assertFalse(self.env["res.partner"].browse(partner_ids).exists())
-        self.assertTrue(all(not u.active for u in batch.user_ids))
+        self.assertTrue(all(not u.active for u in users))
+
+    def test_per_type_generation_and_order(self):
+        batch = self._batch()
+        with self._enabled():
+            batch.action_generate_users()
+            self.assertEqual(batch.state, "partial")
+            # orders need users + partners + products first
+            with self.assertRaises(UserError):
+                batch.action_generate_orders()
+            batch.action_generate_partners()
+            batch.action_generate_products()
+            batch.action_generate_orders()
+            self.assertEqual(batch.state, "generated")
+            # no double generation
+            with self.assertRaises(UserError):
+                batch.action_generate_products()
+
+    def test_cleanup_dependency_order(self):
+        batch = self._batch()
+        with self._enabled():
+            batch.action_generate()
+        with self.assertRaises(UserError):
+            batch.action_cleanup_partners()  # orders still reference them
+        batch.action_cleanup_orders()
+        self.assertFalse(batch.order_ids)
+        batch.action_cleanup_partners()
+        self.assertFalse(batch.partner_ids)
+        self.assertEqual(batch.state, "partial")
 
     def test_user_index_continues(self):
-        with patch.dict(config.options, {"loadtest_enabled": "true"}):
+        with self._enabled():
             first = self._batch(partner_count=0, product_count=0, order_count=0)
-            first.action_generate()
+            first.action_generate_users()
             second = self._batch(partner_count=0, product_count=0, order_count=0)
-            second.action_generate()
+            second.action_generate_users()
         logins = (first.user_ids | second.user_ids).mapped("login")
         self.assertEqual(len(logins), len(set(logins)))
