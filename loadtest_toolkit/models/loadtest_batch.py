@@ -103,10 +103,13 @@ class LoadtestBatch(models.Model):
 
     def _generate_users(self):
         self.ensure_one()
-        salesman = self.env.ref("sales_team.group_sale_salesman", raise_if_not_found=False)
         groups = [(4, self.env.ref("base.group_user").id)]
-        if salesman:
-            groups.append((4, salesman.id))
+        # sales manager: needed to create products and confirm any order,
+        # i.e. the full journey a load scenario drives
+        for xmlid in ("sales_team.group_sale_salesman", "sales_team.group_sale_manager"):
+            group = self.env.ref(xmlid, raise_if_not_found=False)
+            if group:
+                groups.append((4, group.id))
         start = self._next_user_index()
         values = [
             {
