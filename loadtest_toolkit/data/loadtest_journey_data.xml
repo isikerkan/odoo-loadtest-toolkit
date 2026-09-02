@@ -30,4 +30,10 @@
         <field name="sequence">50</field>
         <field name="description">Open browser tab: holds a bus websocket, subscribes, sends presence heartbeats, drains notifications. Pins one server thread per user in threaded mode.</field>
     </record>
+    <record id="journey_error_lab" model="loadtest.journey">
+        <field name="name">Error Lab</field>
+        <field name="code">ErrorLab</field>
+        <field name="sequence">60</field>
+        <field name="description">Calls the sentry_error_lab endpoints (deliberate RPC errors, bad SQL, slow requests, HTTP 500) so Sentry gets a known error volume during the run. Needs the sentry_error_lab module installed and armed on the target.</field>
+    </record>
 </odoo>
