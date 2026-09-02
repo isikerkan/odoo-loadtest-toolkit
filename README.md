@@ -41,6 +41,12 @@ the batch grants them.
 
 ## Usage
 
+Optional: load-test a clone instead of the real database -
+`./scripts/clone_db.sh odoo_18_local odoo_18_loadtest` (terminates connections,
+copies via TEMPLATE, disables mail servers on the clone), then point the
+scenario's target at an instance serving the clone.
+
+
 1. Load Testing → Data Batches → generate users (and data)
 2. Scenarios → new scenario: pick the batch, users/spawn rate/duration,
    journey mix (weights), optionally workers
