@@ -24,4 +24,10 @@
         <field name="sequence">40</field>
         <field name="description">Creates partners and products (needs Sales Manager rights).</field>
     </record>
+    <record id="journey_presence" model="loadtest.journey">
+        <field name="name">Presence (websocket)</field>
+        <field name="code">Presence</field>
+        <field name="sequence">50</field>
+        <field name="description">Open browser tab: holds a bus websocket, subscribes, sends presence heartbeats, drains notifications. Pins one server thread per user in threaded mode.</field>
+    </record>
 </odoo>
