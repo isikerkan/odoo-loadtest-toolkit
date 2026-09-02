@@ -35,9 +35,15 @@ class LoadtestBatch(models.Model):
     password = fields.Char(default="loadtest", help="Password for all test users of this batch")
 
     user_ids = fields.Many2many("res.users", "loadtest_batch_user_rel", string="Test Users")
-    partner_ids = fields.Many2many("res.partner", "loadtest_batch_partner_rel", string="Generated Partners")
-    product_ids = fields.Many2many("product.product", "loadtest_batch_product_rel", string="Generated Products")
-    order_ids = fields.Many2many("sale.order", "loadtest_batch_order_rel", string="Generated Orders")
+    partner_ids = fields.Many2many(
+        "res.partner", "loadtest_batch_partner_rel", string="Generated Partners"
+    )
+    product_ids = fields.Many2many(
+        "product.product", "loadtest_batch_product_rel", string="Generated Products"
+    )
+    order_ids = fields.Many2many(
+        "sale.order", "loadtest_batch_order_rel", string="Generated Orders"
+    )
 
     # live counts of what the batch owns, for the smart buttons
     generated_user_count = fields.Integer(compute="_compute_generated_counts")
@@ -48,7 +54,12 @@ class LoadtestBatch(models.Model):
     @api.depends("user_ids", "partner_ids", "product_ids", "order_ids")
     def _compute_state(self):
         for batch in self:
-            present = [bool(batch.user_ids), bool(batch.partner_ids), bool(batch.product_ids), bool(batch.order_ids)]
+            present = [
+                bool(batch.user_ids),
+                bool(batch.partner_ids),
+                bool(batch.product_ids),
+                bool(batch.order_ids),
+            ]
             batch.state = "generated" if all(present) else ("partial" if any(present) else "draft")
 
     @api.depends("user_ids", "partner_ids", "product_ids", "order_ids")
@@ -97,8 +108,11 @@ class LoadtestBatch(models.Model):
     def _next_user_index(self):
         # numeric max, not "order login desc": lexicographically
         # loadtest_999 > loadtest_1000, which produced duplicate logins
-        users = self.env["res.users"].sudo().with_context(active_test=False).search(
-            [("login", "=like", "loadtest\\_%")]
+        users = (
+            self.env["res.users"]
+            .sudo()
+            .with_context(active_test=False)
+            .search([("login", "=like", "loadtest\\_%")])
         )
         indexes = []
         for login in users.mapped("login"):
@@ -120,10 +134,10 @@ class LoadtestBatch(models.Model):
         start = self._next_user_index()
         values = [
             {
-                "name": "Load Test %03d" % (start + i),
-                "login": "loadtest_%03d" % (start + i),
+                "name": f"Load Test {start + i:03d}",
+                "login": f"loadtest_{start + i:03d}",
                 "password": self.password,
-                "email": "loadtest_%03d@loadtest.invalid" % (start + i),
+                "email": f"loadtest_{start + i:03d}@loadtest.invalid",
                 "groups_id": groups,
             }
             for i in range(self.user_count)
@@ -139,7 +153,7 @@ class LoadtestBatch(models.Model):
                 "name": f"LT{self.id} {'Company' if i % 4 == 0 else 'Contact'} {i:05d}",
                 "is_company": i % 4 == 0,
                 "email": f"lt{self.id}.partner{i:05d}@loadtest.invalid",
-                "phone": "+49 000 %07d" % i,
+                "phone": f"+49 000 {i:07d}",
             }
             for i in range(self.partner_count)
         ]
@@ -289,7 +303,11 @@ class LoadtestBatch(models.Model):
         self._require_no_orders("products")
         for batch in self:
             batch.product_ids.sudo().exists().unlink()
-            stray = self.env["product.template"].sudo().search([("create_uid", "in", batch.user_ids.ids)])
+            stray = (
+                self.env["product.template"]
+                .sudo()
+                .search([("create_uid", "in", batch.user_ids.ids)])
+            )
             stray.unlink()
             batch.product_ids = [(5, 0, 0)]
         return True
@@ -298,7 +316,9 @@ class LoadtestBatch(models.Model):
         self._require_no_orders("partners")
         for batch in self:
             batch.partner_ids.sudo().exists().unlink()
-            stray = self.env["res.partner"].sudo().search([("create_uid", "in", batch.user_ids.ids)])
+            stray = (
+                self.env["res.partner"].sudo().search([("create_uid", "in", batch.user_ids.ids)])
+            )
             stray.unlink()
             batch.partner_ids = [(5, 0, 0)]
         return True
@@ -306,7 +326,9 @@ class LoadtestBatch(models.Model):
     def action_cleanup_users(self):
         self._require_no_orders("users")
         for batch in self:
-            stray_messages = self.env["mail.message"].sudo().search([("create_uid", "in", batch.user_ids.ids)])
+            stray_messages = (
+                self.env["mail.message"].sudo().search([("create_uid", "in", batch.user_ids.ids)])
+            )
             stray_messages.unlink()
             batch.user_ids.sudo().write({"active": False})
             batch.user_ids = [(5, 0, 0)]
