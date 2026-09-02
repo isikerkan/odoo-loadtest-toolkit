@@ -203,6 +203,10 @@ class TestLoadtestRun(TransactionCase):
         run.action_start()
         self.assertFalse(run.sample_ids)
 
+    def test_journey_catalog(self):
+        codes = set(self.env["loadtest.journey"].search([]).mapped("code"))
+        self.assertTrue({"Browser", "SalesRep", "Chatter", "CatalogEditor", "Presence"} <= codes)
+
     def test_duration_units(self):
         cases = [
             (90, "seconds", 90),

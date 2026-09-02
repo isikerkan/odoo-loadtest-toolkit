@@ -9,14 +9,22 @@ by Odoo). Configuration arrives through environment variables:
 - LOADTEST_WEIGHTS   JSON {"ClassName": weight} chosen in the scenario
 """
 
+import contextlib
 import itertools
 import json
 import os
 import random
+import time
 
-from locust import HttpUser, between, task
+from locust import HttpUser, between, events, task
+
+try:
+    import websocket  # websocket-client; cooperative under Locust's gevent patching
+except ImportError:  # pragma: no cover
+    websocket = None
 
 ODOO_DB = os.environ.get("ODOO_DB", "")
+WEBSOCKET_VERSION = os.environ.get("LOADTEST_WS_VERSION", "18.0-7")
 LOGINS = [x for x in os.environ.get("LOADTEST_LOGINS", "").split(",") if x]
 PASSWORD = os.environ.get("LOADTEST_PASSWORD", "loadtest")
 WEIGHTS = json.loads(os.environ.get("LOADTEST_WEIGHTS") or "{}")
@@ -304,3 +312,94 @@ class CatalogEditor(OdooWebUser):
     @task(3)
     def products(self):
         self.browse_products()
+
+
+class Presence(OdooWebUser):
+    """Holds an Odoo bus websocket like an open browser tab: subscribes,
+    sends presence heartbeats, drains notifications. Each connection
+    pins one server thread in threaded mode - the real cost of idle tabs."""
+
+    weight = WEIGHTS.get("Presence", 2)
+    wait_time = between(20, 40)  # presence heartbeats are slow by nature
+
+    def on_start(self):
+        super().on_start()
+        self.ws = None
+        if websocket is None:
+            raise RuntimeError("websocket-client is not installed")
+        host = self.host.replace("https://", "wss://").replace("http://", "ws://")
+        cookie = "; ".join(f"{k}={v}" for k, v in self.client.cookies.get_dict().items())
+        started = time.perf_counter()
+        try:
+            self.ws = websocket.create_connection(
+                f"{host}/websocket?version={WEBSOCKET_VERSION}",
+                cookie=cookie,
+                timeout=10,
+                suppress_origin=True,
+            )
+            self.ws.send(
+                json.dumps({"event_name": "subscribe", "data": {"channels": [], "last": 0}})
+            )
+            self._fire("websocket.connect+subscribe", started)
+        except Exception as exc:
+            self._fire("websocket.connect+subscribe", started, exc)
+            self.ws = None
+
+    def on_stop(self):
+        if self.ws is not None:
+            with contextlib.suppress(Exception):
+                self.ws.close()
+        super().on_stop()
+
+    def _fire(self, name, started, exc=None):
+        events.request.fire(
+            request_type="WS",
+            name=name,
+            response_time=(time.perf_counter() - started) * 1000,
+            response_length=0,
+            exception=exc,
+            context={},
+        )
+
+    @task(4)
+    def heartbeat(self):
+        if self.ws is None:
+            return
+        started = time.perf_counter()
+        try:
+            self.ws.send(
+                json.dumps(
+                    {
+                        "event_name": "update_presence",
+                        "data": {
+                            "inactivity_period": random.choice([0, 0, 30000, 120000]),
+                            "im_status_ids_by_model": {},
+                        },
+                    }
+                )
+            )
+            # drain whatever the bus pushed since the last heartbeat
+            self.ws.settimeout(0.5)
+            with contextlib.suppress(Exception):
+                while True:
+                    self.ws.recv()
+            self.ws.settimeout(10)
+            self._fire("websocket.presence", started)
+        except Exception as exc:
+            self._fire("websocket.presence", started, exc)
+            with contextlib.suppress(Exception):
+                self.ws.close()
+            self.ws = None
+
+    @task(1)
+    def peek_inbox(self):
+        # a real tab keeps reading data alongside its socket
+        self.call_kw(
+            "mail.message",
+            "search_read",
+            kwargs={
+                "domain": [["message_type", "=", "comment"]],
+                "fields": ["author_id", "date"],
+                "limit": 10,
+            },
+        )
