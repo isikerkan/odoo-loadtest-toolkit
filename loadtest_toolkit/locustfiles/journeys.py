@@ -335,7 +335,7 @@ class Presence(OdooWebUser):
                 f"{host}/websocket?version={WEBSOCKET_VERSION}",
                 cookie=cookie,
                 timeout=10,
-                suppress_origin=True,
+                origin=self.host,  # Odoo rejects handshakes without an Origin header
             )
             self.ws.send(
                 json.dumps({"event_name": "subscribe", "data": {"channels": [], "last": 0}})
