@@ -30,7 +30,12 @@ class TestLoadtestBatch(TransactionCase):
             batch.action_generate()
         self.assertEqual(batch.state, "generated")
         self.assertEqual(
-            (len(batch.user_ids), len(batch.partner_ids), len(batch.product_ids), len(batch.order_ids)),
+            (
+                len(batch.user_ids),
+                len(batch.partner_ids),
+                len(batch.product_ids),
+                len(batch.order_ids),
+            ),
             (2, 6, 3, 4),
         )
         self.assertTrue(all(o.create_uid in batch.user_ids for o in batch.order_ids))
@@ -72,10 +77,12 @@ class TestLoadtestBatch(TransactionCase):
     def test_user_index_numeric_not_lexicographic(self):
         # loadtest_999 sorts after loadtest_1000 as a string; the next
         # index must still be 1001
-        self.env["res.users"].create([
-            {"name": "LT 999", "login": "loadtest_999", "active": False},
-            {"name": "LT 1000", "login": "loadtest_1000", "active": False},
-        ])
+        self.env["res.users"].create(
+            [
+                {"name": "LT 999", "login": "loadtest_999", "active": False},
+                {"name": "LT 1000", "login": "loadtest_1000", "active": False},
+            ]
+        )
         batch = self._batch(partner_count=0, product_count=0, order_count=0, user_count=1)
         with self._enabled():
             batch.action_generate_users()

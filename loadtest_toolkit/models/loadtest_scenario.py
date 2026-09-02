@@ -12,28 +12,39 @@ class LoadtestScenario(models.Model):
 
     name = fields.Char(required=True)
     description = fields.Text()
-    batch_id = fields.Many2one("loadtest.batch", required=True, help="Test users and data to play against")
+    batch_id = fields.Many2one(
+        "loadtest.batch", required=True, help="Test users and data to play against"
+    )
     target_url = fields.Char(
         default=lambda self: self.env["ir.config_parameter"].sudo().get_param("web.base.url"),
         required=True,
-        help="Odoo base URL the virtual users hit; point it at another instance to load-test that one",
+        help="Odoo base URL the virtual users hit; point it at another "
+        "instance to load-test that one",
     )
     user_count = fields.Integer(default=10, required=True, help="Concurrent virtual users")
     spawn_rate = fields.Float(default=2.0, required=True, help="Users started per second")
     duration_value = fields.Integer(default=5, help="Length of the run in the chosen unit")
     duration_unit = fields.Selection(
-        [("seconds", "Seconds"), ("minutes", "Minutes"), ("hours", "Hours"),
-         ("days", "Days"), ("infinite", "Infinite")],
+        [
+            ("seconds", "Seconds"),
+            ("minutes", "Minutes"),
+            ("hours", "Hours"),
+            ("days", "Days"),
+            ("infinite", "Infinite"),
+        ],
         default="minutes",
         required=True,
         help="Infinite runs end via the Stop button or the run's Stop At time",
     )
     duration = fields.Integer(
-        compute="_compute_duration", store=True,
+        compute="_compute_duration",
+        store=True,
         help="Effective duration in seconds; 0 = run until stopped",
     )
     worker_count = fields.Integer(default=0, help="Locust worker processes; 0 = single process")
-    journey_line_ids = fields.One2many("loadtest.scenario.journey", "scenario_id", string="Journeys")
+    journey_line_ids = fields.One2many(
+        "loadtest.scenario.journey", "scenario_id", string="Journeys"
+    )
     run_ids = fields.One2many("loadtest.run", "scenario_id", string="Runs")
     run_count = fields.Integer(compute="_compute_run_count")
 
@@ -61,7 +72,7 @@ class LoadtestScenario(models.Model):
 
     def _weights(self):
         self.ensure_one()
-        lines = self.journey_line_ids.filtered(lambda l: l.weight > 0)
+        lines = self.journey_line_ids.filtered(lambda line: line.weight > 0)
         if not lines:
             raise UserError("Add at least one journey with a weight > 0.")
         return {line.journey_id.code: line.weight for line in lines}
