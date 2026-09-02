@@ -403,3 +403,63 @@ class Presence(OdooWebUser):
                 "limit": 10,
             },
         )
+
+
+class ErrorLab(OdooWebUser):
+    """Hits the sentry_error_lab endpoints so Sentry receives a steady,
+    known error volume while a load test runs. The deliberate failures
+    count as successes here; anything else (404 = module missing,
+    403 = lab disabled) is a real failure."""
+
+    weight = WEIGHTS.get("ErrorLab", 1)
+    wait_time = between(5, 15)
+
+    def _lab(self, path, name, expect_error=True, params=None):
+        with self.client.post(
+            path,
+            json={"jsonrpc": "2.0", "method": "call", "params": params or {}},
+            name=name,
+            catch_response=True,
+        ) as response:
+            if response.status_code != 200:
+                response.failure(f"HTTP {response.status_code}: is sentry_error_lab installed?")
+                return
+            error = (response.json() or {}).get("error") or {}
+            error_name = (error.get("data") or {}).get("name", "")
+            if "Forbidden" in error_name:
+                response.failure("sentry_error_lab_enabled is not set on the target")
+            elif expect_error and not error:
+                response.failure("expected a deliberate error, got a result")
+            elif not expect_error and error:
+                response.failure((error.get("data") or {}).get("message", "rpc error")[:120])
+            else:
+                response.success()
+
+    @task(3)
+    def rpc_error(self):
+        self._lab("/sentry_error_lab/boom", "errorlab.boom")
+
+    @task(1)
+    def sql_error(self):
+        self._lab("/sentry_error_lab/sql", "errorlab.sql")
+
+    @task(1)
+    def slow_request(self):
+        self._lab(
+            "/sentry_error_lab/slow",
+            "errorlab.slow",
+            expect_error=False,
+            params={"seconds": random.choice([1, 2, 3])},
+        )
+
+    @task(1)
+    def http_500(self):
+        with self.client.get(
+            "/sentry_error_lab/http_boom", name="errorlab.http_boom", catch_response=True
+        ) as response:
+            if response.status_code == 500:
+                response.success()
+            elif response.status_code == 403:
+                response.failure("sentry_error_lab_enabled is not set on the target")
+            else:
+                response.failure(f"expected HTTP 500, got {response.status_code}")
