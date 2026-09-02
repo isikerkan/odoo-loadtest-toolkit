@@ -1,0 +1,28 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: ["18.0"]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: ruff check
+        run: pipx run ruff check loadtest_toolkit
+      - name: ruff format check
+        run: pipx run ruff format --check loadtest_toolkit
+      - name: compile all python
+        run: python -m compileall -q loadtest_toolkit
+      - name: validate XML
+        run: |
+          python - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          for path in glob.glob("loadtest_toolkit/**/*.xml", recursive=True):
+              ET.parse(path)
+          print("xml ok")
+          PY
