@@ -1,10 +1,11 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
-import os
 import tempfile
+from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from odoo import fields as odoo_fields
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase
 from odoo.tools import config
@@ -16,13 +17,31 @@ POST,sale.order.create+line,10,0,100,110,80,500,200,0.5,0.0,100,110,120,130,200,
 """
 
 LIVE = {
-    "state": "running", "user_count": 5, "total_rps": 4.2, "fail_ratio": 0.01,
+    "state": "running",
+    "user_count": 5,
+    "total_rps": 4.2,
+    "fail_ratio": 0.01,
     "stats": [
-        {"name": "res.partner.search_read", "method": "POST", "num_requests": 40, "num_failures": 1,
-         "median_response_time": 25, "avg_response_time": 31, "current_rps": 3.0,
-         "response_time_percentile_0.95": 120, "response_time_percentile_0.99": 250},
-        {"name": "Aggregated", "method": "", "num_requests": 40, "num_failures": 1,
-         "median_response_time": 25, "avg_response_time": 31, "current_rps": 3.0},
+        {
+            "name": "res.partner.search_read",
+            "method": "POST",
+            "num_requests": 40,
+            "num_failures": 1,
+            "median_response_time": 25,
+            "avg_response_time": 31,
+            "current_rps": 3.0,
+            "response_time_percentile_0.95": 120,
+            "response_time_percentile_0.99": 250,
+        },
+        {
+            "name": "Aggregated",
+            "method": "",
+            "num_requests": 40,
+            "num_failures": 1,
+            "median_response_time": 25,
+            "avg_response_time": 31,
+            "current_rps": 3.0,
+        },
     ],
 }
 
@@ -44,23 +63,37 @@ class TestLoadtestRun(TransactionCase):
         self.batch.action_generate_users()
         browser = self.env.ref("loadtest_toolkit.journey_browser")
         sales = self.env.ref("loadtest_toolkit.journey_sales_rep")
-        self.scenario = self.env["loadtest.scenario"].create({
-            "name": "Smoke", "batch_id": self.batch.id, "target_url": "http://127.0.0.1:8069",
-            "user_count": 5, "spawn_rate": 1.0,
-            "duration_value": 60, "duration_unit": "seconds", "worker_count": 2,
-            "journey_line_ids": [(0, 0, {"journey_id": browser.id, "weight": 3}),
-                                 (0, 0, {"journey_id": sales.id, "weight": 1})],
-        })
+        self.scenario = self.env["loadtest.scenario"].create(
+            {
+                "name": "Smoke",
+                "batch_id": self.batch.id,
+                "target_url": "http://127.0.0.1:8069",
+                "user_count": 5,
+                "spawn_rate": 1.0,
+                "duration_value": 60,
+                "duration_unit": "seconds",
+                "worker_count": 2,
+                "journey_line_ids": [
+                    (0, 0, {"journey_id": browser.id, "weight": 3}),
+                    (0, 0, {"journey_id": sales.id, "weight": 1}),
+                ],
+            }
+        )
         self.spawned = []
 
         def fake_popen(cmd, **kwargs):
             self.spawned.append((cmd, kwargs))
             return SimpleNamespace(pid=40000 + len(self.spawned))
 
-        self.popen = patch("odoo.addons.loadtest_toolkit.models.loadtest_run.subprocess.Popen", side_effect=fake_popen)
+        self.popen = patch(
+            "odoo.addons.loadtest_toolkit.models.loadtest_run.subprocess.Popen",
+            side_effect=fake_popen,
+        )
         self.popen.start()
         self.addCleanup(self.popen.stop)
-        self.alive = patch.object(type(self.env["loadtest.run"]), "_pid_alive", staticmethod(lambda pid: True))
+        self.alive = patch.object(
+            type(self.env["loadtest.run"]), "_pid_alive", staticmethod(lambda pid: True)
+        )
         self.alive.start()
         self.addCleanup(self.alive.stop)
         killpg_patcher = patch("odoo.addons.loadtest_toolkit.models.loadtest_run.os.killpg")
@@ -90,9 +123,11 @@ class TestLoadtestRun(TransactionCase):
 
     def test_guard_and_single_running(self):
         run = self._run()
-        with patch.dict(config.options, {"loadtest_enabled": "false"}):
-            with self.assertRaises(UserError):
-                run.action_start()
+        with (
+            patch.dict(config.options, {"loadtest_enabled": "false"}),
+            self.assertRaises(UserError),
+        ):
+            run.action_start()
         run.action_start()
         with self.assertRaises(UserError):
             self._run().action_start()
@@ -115,8 +150,9 @@ class TestLoadtestRun(TransactionCase):
         run.action_start()
         with open(run._csv_prefix() + "_stats.csv", "w") as fh:
             fh.write(CSV)
-        with patch.object(type(run), "_locust_get", return_value=None), patch(
-            "odoo.addons.loadtest_toolkit.models.loadtest_run.time.sleep"
+        with (
+            patch.object(type(run), "_locust_get", return_value=None),
+            patch("odoo.addons.loadtest_toolkit.models.loadtest_run.time.sleep"),
         ):
             run.action_stop()
         self.assertEqual(run.state, "done")
@@ -155,8 +191,9 @@ class TestLoadtestRun(TransactionCase):
         self.assertGreater(run.cpu_cores, 0)
         with open(run._csv_prefix() + "_stats.csv", "w") as fh:
             fh.write(CSV)
-        with patch.object(type(run), "_locust_get", return_value=None), patch(
-            "odoo.addons.loadtest_toolkit.models.loadtest_run.time.sleep"
+        with (
+            patch.object(type(run), "_locust_get", return_value=None),
+            patch("odoo.addons.loadtest_toolkit.models.loadtest_run.time.sleep"),
         ):
             run.action_stop()
         self.assertEqual(run.state, "done")
@@ -167,27 +204,31 @@ class TestLoadtestRun(TransactionCase):
         self.assertFalse(run.sample_ids)
 
     def test_duration_units(self):
-        cases = [(90, "seconds", 90), (5, "minutes", 300), (2, "hours", 7200),
-                 (1, "days", 86400), (7, "infinite", 0)]
+        cases = [
+            (90, "seconds", 90),
+            (5, "minutes", 300),
+            (2, "hours", 7200),
+            (1, "days", 86400),
+            (7, "infinite", 0),
+        ]
         for value, unit, expected in cases:
             self.scenario.write({"duration_value": value, "duration_unit": unit})
             self.assertEqual(self.scenario.duration, expected, f"{value} {unit}")
         self.scenario.write({"duration_value": 60, "duration_unit": "seconds"})
 
     def test_stop_at_triggers_stop(self):
-        from datetime import timedelta
-        from odoo import fields as ofields
         run = self._run()
         run.action_start()
-        run.stop_at = ofields.Datetime.now() + timedelta(hours=1)
+        run.stop_at = odoo_fields.Datetime.now() + timedelta(hours=1)
         with patch.object(type(run), "_locust_get", return_value=LIVE):
             run.action_refresh()
         self.assertEqual(run.state, "running")  # future stop_at: keeps going
-        run.stop_at = ofields.Datetime.now() - timedelta(seconds=1)
+        run.stop_at = odoo_fields.Datetime.now() - timedelta(seconds=1)
         with open(run._csv_prefix() + "_stats.csv", "w") as fh:
             fh.write(CSV)
-        with patch.object(type(run), "_locust_get", return_value=None), patch(
-            "odoo.addons.loadtest_toolkit.models.loadtest_run.time.sleep"
+        with (
+            patch.object(type(run), "_locust_get", return_value=None),
+            patch("odoo.addons.loadtest_toolkit.models.loadtest_run.time.sleep"),
         ):
             run.action_refresh()
         self.assertEqual(run.state, "done")
@@ -197,8 +238,9 @@ class TestLoadtestRun(TransactionCase):
         run.action_start()
         with open(run._csv_prefix() + "_stats.csv", "w") as fh:
             fh.write(CSV)
-        with patch.object(type(run), "_locust_get", return_value=None), patch(
-            "odoo.addons.loadtest_toolkit.models.loadtest_run.time.sleep"
+        with (
+            patch.object(type(run), "_locust_get", return_value=None),
+            patch("odoo.addons.loadtest_toolkit.models.loadtest_run.time.sleep"),
         ):
             run.action_stop()
         action = run.action_repeat()
