@@ -8,6 +8,7 @@ drives it through its REST API: live stats while running, /stop to end
 it. Final numbers come from Locust's CSV export.
 """
 
+import contextlib
 import csv
 import json
 import logging
@@ -55,9 +56,9 @@ class LoadtestRun(models.Model):
     started_at = fields.Datetime(readonly=True)
     stop_at = fields.Datetime(
         help="Automatically stop the run at this time (checked by the poll "
-             "cron, so with up to a minute of slack). Can be set or changed "
-             "while the run is going; leave empty for a fixed-duration or "
-             "manually stopped run."
+        "cron, so with up to a minute of slack). Can be set or changed "
+        "while the run is going; leave empty for a fixed-duration or "
+        "manually stopped run."
     )
     ended_at = fields.Datetime(readonly=True)
     port = fields.Integer(readonly=True)
@@ -115,7 +116,9 @@ class LoadtestRun(models.Model):
             if not run.scenario_id:
                 run.name = "Run"
                 continue
-            siblings = run.scenario_id.run_ids.filtered(lambda r: r.id and run.id and r.id <= run.id)
+            siblings = run.scenario_id.run_ids.filtered(
+                lambda r, run=run: r.id and run.id and r.id <= run.id
+            )
             run.name = f"{run.scenario_id.name} #{len(siblings) or 1}"
 
     @api.depends("started_at", "ended_at")
@@ -156,17 +159,19 @@ class LoadtestRun(models.Model):
         try:
             with open(f"/proc/{pid}/stat") as fh:
                 if fh.read().rsplit(")", 1)[1].split()[0] == "Z":
-                    try:
+                    with contextlib.suppress(ChildProcessError):
                         os.waitpid(pid, os.WNOHANG)
-                    except ChildProcessError:
-                        pass
                     return False
         except OSError:
             return False
         return True
 
     def _locustfile(self):
-        return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "locustfiles", "journeys.py")
+        return os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "locustfiles",
+            "journeys.py",
+        )
 
     def _csv_prefix(self):
         self.ensure_one()
@@ -188,20 +193,34 @@ class LoadtestRun(models.Model):
         self.ensure_one()
         scenario = self.scenario_id
         return [
-            sys.executable, "-m", "locust",
-            "-f", self._locustfile(),
+            sys.executable,
+            "-m",
+            "locust",
+            "-f",
+            self._locustfile(),
             *scenario._weights().keys(),
-            "--host", scenario.target_url,
+            "--host",
+            scenario.target_url,
         ]
 
     def _master_command(self):
         self.ensure_one()
         scenario = self.scenario_id
-        cmd = self._base_command() + [
-            "--web-host", "127.0.0.1", "--web-port", str(self.port),
-            "--autostart", "--autoquit", "10",
-            "-u", str(scenario.user_count), "-r", str(scenario.spawn_rate),
-            "--csv", self._csv_prefix(),
+        cmd = [
+            *self._base_command(),
+            "--web-host",
+            "127.0.0.1",
+            "--web-port",
+            str(self.port),
+            "--autostart",
+            "--autoquit",
+            "10",
+            "-u",
+            str(scenario.user_count),
+            "-r",
+            str(scenario.spawn_rate),
+            "--csv",
+            self._csv_prefix(),
         ]
         if scenario.duration:
             cmd += ["-t", f"{scenario.duration}s"]
@@ -213,8 +232,12 @@ class LoadtestRun(models.Model):
         self.ensure_one()
         with open(os.path.join(self.run_dir, logname), "ab") as log:
             proc = subprocess.Popen(
-                cmd, cwd=self.run_dir, env=self._child_env(),
-                stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                cmd,
+                cwd=self.run_dir,
+                env=self._child_env(),
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                stdin=subprocess.DEVNULL,
                 start_new_session=True,
             )
         return proc.pid
@@ -229,29 +252,67 @@ class LoadtestRun(models.Model):
                 raise UserError("This run is already running.")
             if not scenario.batch_id.user_ids:
                 raise UserError("The batch has no test users - generate them first.")
-            other = self.search([("scenario_id", "=", scenario.id), ("state", "in", RUNNING_STATES), ("id", "!=", run.id)], limit=1)
+            other = self.search(
+                [
+                    ("scenario_id", "=", scenario.id),
+                    ("state", "in", RUNNING_STATES),
+                    ("id", "!=", run.id),
+                ],
+                limit=1,
+            )
             if other:
                 raise UserError(f"{other.name} is still running for this scenario.")
 
             run_dir = os.path.join(config["data_dir"], "loadtest", f"run_{run.id}")
             os.makedirs(run_dir, exist_ok=True)
-            run.write({
-                "port": self._free_port(), "run_dir": run_dir,
-                "state": "running", "started_at": fields.Datetime.now(), "ended_at": False,
-                "live_state": "starting", "live_users": 0, "live_rps": 0, "live_fail_ratio": 0,
-                "live_requests": 0, "live_failures": 0,
-                "total_requests": 0, "total_failures": 0, "failure_ratio": 0, "rps_avg": 0,
-                "p50": 0, "p95": 0, "p99": 0, "log_excerpt": False,
-                "result_ids": [(5, 0, 0)], "process_ids": [(5, 0, 0)], "sample_ids": [(5, 0, 0)],
-                "poll_failures": 0,
-                "sys_cpu": 0, "sys_mem": 0, "sys_rss_mb": 0, "sys_pg_active": 0, "sys_pg_total": 0,
-                "avg_cpu": 0, "max_cpu": 0, "avg_mem": 0, "max_mem": 0,
-                "avg_rss_mb": 0, "max_rss_mb": 0, "avg_pg_active": 0, "max_pg_active": 0,
-            })
-            processes = [(0, 0, {"role": "master", "pid": run._spawn(run._master_command(), "master.log")})]
+            run.write(
+                {
+                    "port": self._free_port(),
+                    "run_dir": run_dir,
+                    "state": "running",
+                    "started_at": fields.Datetime.now(),
+                    "ended_at": False,
+                    "live_state": "starting",
+                    "live_users": 0,
+                    "live_rps": 0,
+                    "live_fail_ratio": 0,
+                    "live_requests": 0,
+                    "live_failures": 0,
+                    "total_requests": 0,
+                    "total_failures": 0,
+                    "failure_ratio": 0,
+                    "rps_avg": 0,
+                    "p50": 0,
+                    "p95": 0,
+                    "p99": 0,
+                    "log_excerpt": False,
+                    "result_ids": [(5, 0, 0)],
+                    "process_ids": [(5, 0, 0)],
+                    "sample_ids": [(5, 0, 0)],
+                    "poll_failures": 0,
+                    "sys_cpu": 0,
+                    "sys_mem": 0,
+                    "sys_rss_mb": 0,
+                    "sys_pg_active": 0,
+                    "sys_pg_total": 0,
+                    "avg_cpu": 0,
+                    "max_cpu": 0,
+                    "avg_mem": 0,
+                    "max_mem": 0,
+                    "avg_rss_mb": 0,
+                    "max_rss_mb": 0,
+                    "avg_pg_active": 0,
+                    "max_pg_active": 0,
+                }
+            )
+            processes = [
+                (0, 0, {"role": "master", "pid": run._spawn(run._master_command(), "master.log")})
+            ]
             for i in range(scenario.worker_count):
-                worker_cmd = run._base_command() + ["--worker", "--master-host", "127.0.0.1"]
-                processes.append((0, 0, {"role": "worker", "pid": run._spawn(worker_cmd, f"worker_{i + 1}.log")}))
+                worker_cmd = [*run._base_command(), "--worker", "--master-host", "127.0.0.1"]
+                processes.append(
+                    (0, 0, {"role": "worker", "pid": run._spawn(worker_cmd, f"worker_{i + 1}.log")})
+                )
             run.write({"process_ids": processes})
             _logger.info("loadtest run %s started on port %s", run.id, run.port)
         return True
@@ -274,7 +335,7 @@ class LoadtestRun(models.Model):
             snapshot["cpu"] = psutil.cpu_percent(interval=None)
             memory = psutil.virtual_memory()
             snapshot["mem"] = memory.percent
-            snapshot["mem_used_gb"] = memory.used / (1024 ** 3)
+            snapshot["mem_used_gb"] = memory.used / (1024**3)
             snapshot["cores"] = psutil.cpu_count() or 0
             snapshot["rss_mb"] = psutil.Process().memory_info().rss / (1024 * 1024)
         self.env.cr.execute(
@@ -288,25 +349,35 @@ class LoadtestRun(models.Model):
     def _take_sample(self, stats):
         self.ensure_one()
         snap = self._system_snapshot()
-        total = next((s for s in (stats or {}).get("stats", []) if s.get("name") == "Aggregated"), {})
-        self.env["loadtest.run.sample"].create({
-            "run_id": self.id,
-            "cpu": snap.get("cpu", 0.0), "mem": snap.get("mem", 0.0),
-            "mem_used_gb": snap.get("mem_used_gb", 0.0),
-            "rss_mb": snap.get("rss_mb", 0.0),
-            "pg_active": snap["pg_active"], "pg_total": snap["pg_total"],
-            "users": (stats or {}).get("user_count", 0),
-            "rps": (stats or {}).get("total_rps", 0.0),
-            "fail_ratio": (stats or {}).get("fail_ratio", 0.0),
-            "requests": total.get("num_requests", 0),
-        })
-        self.write({
-            "sys_cpu": snap.get("cpu", 0.0), "sys_mem": snap.get("mem", 0.0),
-            "sys_mem_used_gb": snap.get("mem_used_gb", 0.0),
-            "cpu_cores": snap.get("cores", 0),
-            "sys_rss_mb": snap.get("rss_mb", 0.0),
-            "sys_pg_active": snap["pg_active"], "sys_pg_total": snap["pg_total"],
-        })
+        total = next(
+            (s for s in (stats or {}).get("stats", []) if s.get("name") == "Aggregated"), {}
+        )
+        self.env["loadtest.run.sample"].create(
+            {
+                "run_id": self.id,
+                "cpu": snap.get("cpu", 0.0),
+                "mem": snap.get("mem", 0.0),
+                "mem_used_gb": snap.get("mem_used_gb", 0.0),
+                "rss_mb": snap.get("rss_mb", 0.0),
+                "pg_active": snap["pg_active"],
+                "pg_total": snap["pg_total"],
+                "users": (stats or {}).get("user_count", 0),
+                "rps": (stats or {}).get("total_rps", 0.0),
+                "fail_ratio": (stats or {}).get("fail_ratio", 0.0),
+                "requests": total.get("num_requests", 0),
+            }
+        )
+        self.write(
+            {
+                "sys_cpu": snap.get("cpu", 0.0),
+                "sys_mem": snap.get("mem", 0.0),
+                "sys_mem_used_gb": snap.get("mem_used_gb", 0.0),
+                "cpu_cores": snap.get("cores", 0),
+                "sys_rss_mb": snap.get("rss_mb", 0.0),
+                "sys_pg_active": snap["pg_active"],
+                "sys_pg_total": snap["pg_total"],
+            }
+        )
 
     def _summarize_samples(self):
         self.ensure_one()
@@ -315,11 +386,14 @@ class LoadtestRun(models.Model):
             return {}
         count = len(samples)
         return {
-            "avg_cpu": sum(samples.mapped("cpu")) / count, "max_cpu": max(samples.mapped("cpu")),
-            "avg_mem": sum(samples.mapped("mem")) / count, "max_mem": max(samples.mapped("mem")),
+            "avg_cpu": sum(samples.mapped("cpu")) / count,
+            "max_cpu": max(samples.mapped("cpu")),
+            "avg_mem": sum(samples.mapped("mem")) / count,
+            "max_mem": max(samples.mapped("mem")),
             "avg_mem_used_gb": sum(samples.mapped("mem_used_gb")) / count,
             "max_mem_used_gb": max(samples.mapped("mem_used_gb")),
-            "avg_rss_mb": sum(samples.mapped("rss_mb")) / count, "max_rss_mb": max(samples.mapped("rss_mb")),
+            "avg_rss_mb": sum(samples.mapped("rss_mb")) / count,
+            "max_rss_mb": max(samples.mapped("rss_mb")),
             "avg_pg_active": sum(samples.mapped("pg_active")) / count,
             "max_pg_active": max(samples.mapped("pg_active")),
         }
@@ -355,15 +429,18 @@ class LoadtestRun(models.Model):
         self.ensure_one()
         entries = [s for s in stats.get("stats", []) if s.get("name") != "Aggregated"]
         total = next((s for s in stats.get("stats", []) if s.get("name") == "Aggregated"), {})
-        self.write({
-            "live_state": stats.get("state"),
-            "live_users": stats.get("user_count", 0),
-            "live_rps": stats.get("total_rps", 0.0),
-            "live_fail_ratio": stats.get("fail_ratio", 0.0),
-            "live_requests": total.get("num_requests", 0),
-            "live_failures": total.get("num_failures", 0),
-            "result_ids": [(5, 0, 0)] + [(0, 0, self._result_values_from_live(s)) for s in entries],
-        })
+        self.write(
+            {
+                "live_state": stats.get("state"),
+                "live_users": stats.get("user_count", 0),
+                "live_rps": stats.get("total_rps", 0.0),
+                "live_fail_ratio": stats.get("fail_ratio", 0.0),
+                "live_requests": total.get("num_requests", 0),
+                "live_failures": total.get("num_failures", 0),
+                "result_ids": [(5, 0, 0)]
+                + [(0, 0, self._result_values_from_live(s)) for s in entries],
+            }
+        )
 
     @staticmethod
     def _percentile(entry, fraction):
@@ -374,10 +451,14 @@ class LoadtestRun(models.Model):
 
     def _result_values_from_live(self, entry):
         return {
-            "name": entry.get("name"), "method": entry.get("method") or "",
-            "requests": entry.get("num_requests", 0), "failures": entry.get("num_failures", 0),
-            "median": entry.get("median_response_time") or 0.0, "avg": entry.get("avg_response_time") or 0.0,
-            "p95": self._percentile(entry, "0.95"), "p99": self._percentile(entry, "0.99"),
+            "name": entry.get("name"),
+            "method": entry.get("method") or "",
+            "requests": entry.get("num_requests", 0),
+            "failures": entry.get("num_failures", 0),
+            "median": entry.get("median_response_time") or 0.0,
+            "avg": entry.get("avg_response_time") or 0.0,
+            "p95": self._percentile(entry, "0.95"),
+            "p99": self._percentile(entry, "0.99"),
             "rps": entry.get("current_rps") or 0.0,
         }
 
@@ -391,31 +472,39 @@ class LoadtestRun(models.Model):
         with open(path, newline="") as fh:
             for row in csv.DictReader(fh):
                 values = {
-                    "name": row["Name"], "method": row.get("Type") or "",
-                    "requests": int(float(row["Request Count"] or 0)), "failures": int(float(row["Failure Count"] or 0)),
-                    "median": float(row.get("Median Response Time") or 0), "avg": float(row.get("Average Response Time") or 0),
-                    "p95": float(row.get("95%") or 0), "p99": float(row.get("99%") or 0),
+                    "name": row["Name"],
+                    "method": row.get("Type") or "",
+                    "requests": int(float(row["Request Count"] or 0)),
+                    "failures": int(float(row["Failure Count"] or 0)),
+                    "median": float(row.get("Median Response Time") or 0),
+                    "avg": float(row.get("Average Response Time") or 0),
+                    "p95": float(row.get("95%") or 0),
+                    "p99": float(row.get("99%") or 0),
                     "rps": float(row.get("Requests/s") or 0),
                 }
                 if row["Name"] == "Aggregated":
                     summary = {
-                        "total_requests": values["requests"], "total_failures": values["failures"],
-                        "failure_ratio": (values["failures"] / values["requests"]) if values["requests"] else 0.0,
-                        "rps_avg": values["rps"], "p50": values["median"], "p95": values["p95"], "p99": values["p99"],
+                        "total_requests": values["requests"],
+                        "total_failures": values["failures"],
+                        "failure_ratio": (values["failures"] / values["requests"])
+                        if values["requests"]
+                        else 0.0,
+                        "rps_avg": values["rps"],
+                        "p50": values["median"],
+                        "p95": values["p95"],
+                        "p99": values["p99"],
                     }
                 else:
                     lines.append((0, 0, values))
-        self.write(dict(summary, result_ids=[(5, 0, 0)] + lines))
+        self.write(dict(summary, result_ids=[(5, 0, 0), *lines]))
         return bool(lines)
 
     def _terminate_processes(self):
         self.ensure_one()
         for proc in self.process_ids:
             if self._pid_alive(proc.pid):
-                try:
+                with contextlib.suppress(ProcessLookupError, PermissionError):
                     os.killpg(proc.pid, signal.SIGTERM)
-                except (ProcessLookupError, PermissionError):
-                    pass
 
     def _finalize(self):
         self.ensure_one()
@@ -426,13 +515,15 @@ class LoadtestRun(models.Model):
         if self.run_dir and os.path.exists(log_path):
             with open(log_path, errors="replace") as fh:
                 excerpt = "".join(fh.readlines()[-40:])
-        self.write(dict(self._summarize_samples(),
-            **{
-            "state": "done" if has_results else "failed",
-            "ended_at": fields.Datetime.now(),
-            "live_state": "stopped",
-            "log_excerpt": excerpt,
-        }))
+        self.write(
+            {
+                **self._summarize_samples(),
+                "state": "done" if has_results else "failed",
+                "ended_at": fields.Datetime.now(),
+                "live_state": "stopped",
+                "log_excerpt": excerpt,
+            }
+        )
         _logger.info("loadtest run %s finished: %s", self.id, self.state)
 
     def action_stop(self):
@@ -450,12 +541,19 @@ class LoadtestRun(models.Model):
         self.ensure_one()
         new = self.create({"scenario_id": self.scenario_id.id, "notes": self.notes})
         new.action_start()
-        return {"type": "ir.actions.act_window", "res_model": "loadtest.run", "res_id": new.id, "view_mode": "form"}
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": "loadtest.run",
+            "res_id": new.id,
+            "view_mode": "form",
+        }
 
     def action_open_sentry(self):
         self.ensure_one()
         if not self.sentry_url:
-            raise UserError("Set loadtest_sentry_org in the server configuration to link runs to Sentry.")
+            raise UserError(
+                "Set loadtest_sentry_org in the server configuration to link runs to Sentry."
+            )
         return {"type": "ir.actions.act_url", "url": self.sentry_url, "target": "new"}
 
     @api.ondelete(at_uninstall=False)
