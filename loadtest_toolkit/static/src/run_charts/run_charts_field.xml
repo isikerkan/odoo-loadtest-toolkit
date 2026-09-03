@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="loadtest_toolkit.RunChartsField">
+        <div class="o_loadtest_run_charts_field">
+            <t t-if="isEmpty">
+                <p class="text-muted fst-italic m-2">No samples yet. The charts fill in once the run has been polled.</p>
+            </t>
+            <t t-else="">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <h6 class="text-uppercase text-muted small mb-1">Throughput</h6>
+                        <div class="o_loadtest_chart"><canvas t-ref="throughput"/></div>
+                    </div>
+                    <div class="col-12">
+                        <h6 class="text-uppercase text-muted small mb-1">Latency and failures</h6>
+                        <div class="o_loadtest_chart"><canvas t-ref="latency"/></div>
+                    </div>
+                    <div class="col-12">
+                        <h6 class="text-uppercase text-muted small mb-1">Host and database</h6>
+                        <div class="o_loadtest_chart"><canvas t-ref="system"/></div>
+                    </div>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

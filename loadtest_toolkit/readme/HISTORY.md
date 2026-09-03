@@ -1,3 +1,17 @@
+## 18.0.4.3.0
+
+- Timeline charts on the run form (Chart.js from Odoo's bundle): users
+  and current requests/s, p50/p95 with the failure ratio, CPU/RAM and
+  PostgreSQL connections, drawn from the poll samples.
+
+## 18.0.4.2.0
+
+- Samples store Locust's current requests/s, p50/p95 of the last seconds
+  and the failure count.
+- *Samples* smart button on the run: Odoo graph view over time, list and
+  search views.
+- Tests run `post_install` and no longer assume an empty database.
+
 ## 18.0.4.1.0
 
 - Presence journey: one Odoo bus websocket per virtual user with
