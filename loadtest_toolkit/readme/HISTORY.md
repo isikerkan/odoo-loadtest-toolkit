@@ -1,3 +1,17 @@
+## 18.0.5.0.0
+
+- Generated partners, products and orders point back at their batch with
+  an indexed `loadtest_batch_id` (many2one) instead of relation tables;
+  counts use `search_count`, cleanup runs in chunks. Migration moves the
+  existing links.
+- Generation is chunk-capable and idempotent:
+  `_generate_<kind>_chunk(start, size)` creates the records of an index
+  range and skips the ones that already exist (deterministic keys
+  `LT<batch>-P…`, `LT<batch>-…`, `LT<batch>-O…`), ready for background
+  jobs.
+- Products are generated as templates (one variant each); orders sample
+  a bounded pool of partners and variants.
+
 ## 18.0.4.3.0
 
 - Timeline charts on the run form (Chart.js from Odoo's bundle): users
