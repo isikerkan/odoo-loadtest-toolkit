@@ -42,6 +42,8 @@ class TestLoadtestBatch(TransactionCase):
             (2, 6, 3, 4),
         )
         self.assertTrue(all(o.create_uid in batch.user_ids for o in batch.order_ids))
+        self.assertTrue(all(p.loadtest_batch_id == batch for p in batch.product_ids))
+        self.assertEqual(batch.generated_product_count, 3)
         partner_ids, order_ids, users = batch.partner_ids.ids, batch.order_ids.ids, batch.user_ids
         batch.action_cleanup()
         self.assertEqual(batch.state, "draft")
@@ -103,3 +105,25 @@ class TestLoadtestBatch(TransactionCase):
             second.action_generate_users()
         logins = (first.user_ids | second.user_ids).mapped("login")
         self.assertEqual(len(logins), len(set(logins)))
+
+    def test_chunks_are_idempotent(self):
+        batch = self._batch(product_count=7)
+        with self._enabled():
+            first = batch._generate_products_chunk(0, 4)
+            again = batch._generate_products_chunk(0, 4)  # retry: nothing new
+            rest = batch._generate_products_chunk(4, 3)
+        self.assertEqual((len(first), len(again), len(rest)), (4, 0, 3))
+        self.assertEqual(batch.generated_product_count, 7)
+        self.assertEqual(sorted(batch.product_ids.mapped("default_code"))[0], batch._key("", 0))
+        self.assertEqual(batch._chunks(7, 3), [(0, 3), (3, 3), (6, 1)])
+
+    def test_cleanup_removes_strays_in_chunks(self):
+        batch = self._batch(order_count=0)
+        with self._enabled():
+            batch.action_generate()
+        user = batch.user_ids[0]
+        stray = self.env["res.partner"].with_user(user).create({"name": "made during a run"})
+        with patch("odoo.addons.loadtest_toolkit.models.loadtest_batch.CHUNK", 2):
+            batch.action_cleanup_partners()
+        self.assertFalse(stray.exists())
+        self.assertEqual(batch.generated_partner_count, 0)
