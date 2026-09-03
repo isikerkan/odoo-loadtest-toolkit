@@ -15,6 +15,11 @@
                     <field name="state" widget="statusbar" statusbar_visible="draft,running,done" />
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_samples" type="object" class="oe_stat_button" icon="fa-line-chart" invisible="not sample_count">
+                            <field name="sample_count" widget="statinfo" string="Samples" />
+                        </button>
+                    </div>
                     <group>
                         <group string="Run">
                             <field name="name" />
@@ -86,9 +91,13 @@
                                 <list>
                                     <field name="sampled_at" />
                                     <field name="users" />
+                                    <field name="current_rps" />
                                     <field name="rps" />
+                                    <field name="p50" />
+                                    <field name="p95" />
                                     <field name="fail_ratio" widget="percentage" />
                                     <field name="requests" />
+                                    <field name="failures" />
                                     <field name="cpu" />
                                     <field name="mem" />
                                     <field name="mem_used_gb" />
@@ -139,5 +148,51 @@
         <field name="name">Runs</field>
         <field name="res_model">loadtest.run</field>
         <field name="view_mode">list,form</field>
+    </record>
+    <record id="loadtest_run_sample_view_graph" model="ir.ui.view">
+        <field name="name">loadtest.run.sample.graph</field>
+        <field name="model">loadtest.run.sample</field>
+        <field name="arch" type="xml">
+            <graph string="Run Samples" type="line" sample="1" disable_linking="1">
+                <field name="sampled_at" interval="minute" type="row" />
+                <field name="current_rps" type="measure" />
+            </graph>
+        </field>
+    </record>
+    <record id="loadtest_run_sample_view_list" model="ir.ui.view">
+        <field name="name">loadtest.run.sample.list</field>
+        <field name="model">loadtest.run.sample</field>
+        <field name="arch" type="xml">
+            <list string="Run Samples" create="0" edit="0">
+                <field name="run_id" />
+                <field name="sampled_at" />
+                <field name="users" />
+                <field name="current_rps" />
+                <field name="rps" />
+                <field name="p50" />
+                <field name="p95" />
+                <field name="fail_ratio" widget="percentage" />
+                <field name="requests" />
+                <field name="failures" />
+                <field name="cpu" />
+                <field name="mem" />
+                <field name="mem_used_gb" />
+                <field name="rss_mb" />
+                <field name="pg_active" />
+                <field name="pg_total" />
+            </list>
+        </field>
+    </record>
+    <record id="loadtest_run_sample_view_search" model="ir.ui.view">
+        <field name="name">loadtest.run.sample.search</field>
+        <field name="model">loadtest.run.sample</field>
+        <field name="arch" type="xml">
+            <search string="Run Samples">
+                <field name="run_id" />
+                <group expand="0" string="Group By">
+                    <filter name="group_run" string="Run" context="{'group_by': 'run_id'}" />
+                </group>
+            </search>
+        </field>
     </record>
 </odoo>

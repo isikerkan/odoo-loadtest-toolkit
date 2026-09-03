@@ -31,7 +31,7 @@ try:
 except ImportError:
     psutil = None
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import config
 
@@ -84,6 +84,7 @@ class LoadtestRun(models.Model):
     p99 = fields.Float(readonly=True, string="p99 (ms)")
     result_ids = fields.One2many("loadtest.run.result", "run_id", readonly=True)
     sample_ids = fields.One2many("loadtest.run.sample", "run_id", readonly=True)
+    sample_count = fields.Integer(compute="_compute_sample_count")
 
     # latest system sample (live view)
     sys_cpu = fields.Float(readonly=True, string="CPU %")
@@ -352,6 +353,9 @@ class LoadtestRun(models.Model):
         total = next(
             (s for s in (stats or {}).get("stats", []) if s.get("name") == "Aggregated"), {}
         )
+        # Locust reports the percentiles of the last few seconds at the top
+        # level; they are None while no request completed in that window
+        percentiles = (stats or {}).get("current_response_time_percentiles") or {}
         self.env["loadtest.run.sample"].create(
             {
                 "run_id": self.id,
@@ -363,8 +367,12 @@ class LoadtestRun(models.Model):
                 "pg_total": snap["pg_total"],
                 "users": (stats or {}).get("user_count", 0),
                 "rps": (stats or {}).get("total_rps", 0.0),
+                "current_rps": (stats or {}).get("current_rps", 0.0) or 0.0,
                 "fail_ratio": (stats or {}).get("fail_ratio", 0.0),
                 "requests": total.get("num_requests", 0),
+                "failures": total.get("num_failures", 0),
+                "p50": percentiles.get("response_time_percentile_0.5") or 0.0,
+                "p95": percentiles.get("response_time_percentile_0.95") or 0.0,
             }
         )
         self.write(
@@ -378,6 +386,24 @@ class LoadtestRun(models.Model):
                 "sys_pg_total": snap["pg_total"],
             }
         )
+
+    @api.depends("sample_ids")
+    def _compute_sample_count(self):
+        for run in self:
+            run.sample_count = len(run.sample_ids)
+
+    def action_view_samples(self):
+        """Open the run's samples as a line chart over time (Odoo graph
+        view), one measure at a time; the list is one click away."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Samples: %s") % self.display_name,
+            "res_model": "loadtest.run.sample",
+            "view_mode": "graph,list",
+            "domain": [("run_id", "=", self.id)],
+            "context": {"search_default_run_id": self.id, "graph_measure": "current_rps"},
+        }
 
     def _summarize_samples(self):
         self.ensure_one()
@@ -613,6 +639,16 @@ class LoadtestRunSample(models.Model):
     pg_active = fields.Integer(string="PG active")
     pg_total = fields.Integer(string="PG connections")
     users = fields.Integer()
-    rps = fields.Float(digits=(12, 1))
+    rps = fields.Float(
+        string="Avg req/s", digits=(12, 1), help="Requests per second since the run started"
+    )
+    current_rps = fields.Float(
+        string="Current req/s", digits=(12, 1), help="Requests per second over the last seconds"
+    )
     fail_ratio = fields.Float(digits=(6, 4))
     requests = fields.Integer()
+    failures = fields.Integer()
+    p50 = fields.Float(string="p50 (ms)", help="Median response time over the last seconds")
+    p95 = fields.Float(
+        string="p95 (ms)", help="95th percentile response time over the last seconds"
+    )

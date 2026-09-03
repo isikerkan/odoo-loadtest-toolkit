@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from odoo import fields as odoo_fields
 from odoo.exceptions import UserError
-from odoo.tests import TransactionCase
+from odoo.tests import TransactionCase, tagged
 from odoo.tools import config
 
 CSV = """Type,Name,Request Count,Failure Count,Median Response Time,Average Response Time,Min Response Time,Max Response Time,Average Content Size,Requests/s,Failures/s,50%,66%,75%,80%,90%,95%,98%,99%,99.9%,99.99%,100%
@@ -20,7 +20,12 @@ LIVE = {
     "state": "running",
     "user_count": 5,
     "total_rps": 4.2,
+    "current_rps": 3.0,
     "fail_ratio": 0.01,
+    "current_response_time_percentiles": {
+        "response_time_percentile_0.5": 25,
+        "response_time_percentile_0.95": 120,
+    },
     "stats": [
         {
             "name": "res.partner.search_read",
@@ -46,6 +51,9 @@ LIVE = {
 }
 
 
+# post_install: the batch creates sale orders, and modules that extend
+# sale.order with NOT NULL columns (sale_stock) may load after this one
+@tagged("post_install", "-at_install")
 class TestLoadtestRun(TransactionCase):
     def setUp(self):
         super().setUp()
@@ -185,7 +193,17 @@ class TestLoadtestRun(TransactionCase):
             run.action_refresh()
             run.action_refresh()
         self.assertEqual(len(run.sample_ids), 2)
-        self.assertEqual(run.sample_ids[0].users, 5)
+        self.assertEqual(run.sample_count, 2)
+        sample = run.sample_ids[0]
+        self.assertEqual(sample.users, 5)
+        self.assertEqual((sample.current_rps, sample.p50, sample.p95), (3.0, 25, 120))
+        self.assertEqual(sample.failures, 1)
+        action = run.action_view_samples()
+        self.assertEqual(action["res_model"], "loadtest.run.sample")
+        self.assertEqual(action["domain"], [("run_id", "=", run.id)])
+        # a sample taken while Locust is unreachable keeps the system part
+        run._take_sample(None)
+        self.assertEqual(run.sample_ids[-1].p95, 0.0)
         self.assertGreater(run.sys_pg_total, 0)
         self.assertGreater(run.sys_mem_used_gb, 0)
         self.assertGreater(run.cpu_cores, 0)
