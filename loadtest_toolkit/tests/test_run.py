@@ -198,6 +198,11 @@ class TestLoadtestRun(TransactionCase):
         self.assertEqual(sample.users, 5)
         self.assertEqual((sample.current_rps, sample.p50, sample.p95), (3.0, 25, 120))
         self.assertEqual(sample.failures, 1)
+        chart = run.chart_data
+        self.assertEqual(len(chart["labels"]), 2)
+        self.assertEqual(chart["series"]["users"], [5, 5])
+        self.assertEqual(chart["series"]["p95"], [120.0, 120.0])
+        self.assertEqual(set(chart["series"]), set(run.CHART_SERIES))
         action = run.action_view_samples()
         self.assertEqual(action["res_model"], "loadtest.run.sample")
         self.assertEqual(action["domain"], [("run_id", "=", run.id)])

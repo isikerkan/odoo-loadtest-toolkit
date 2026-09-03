@@ -1,0 +1,22 @@
+// The charts block is a root child of the form, i.e. it sits where the
+// chatter normally is: as an aside next to the sheet on very wide screens
+// (the form renderer switches to a flex row at the XXL breakpoint), below
+// the sheet otherwise. Mirror the chatter's aside sizing so the sheet keeps
+// its width.
+.o_loadtest_run_charts {
+    width: 100%;
+    padding: 0 map-get($spacers, 3) map-get($spacers, 4);
+    background-color: $o-view-background-color;
+
+    @include media-breakpoint-up(xxl) {
+        flex: 1 0 530px;
+        min-width: 0;
+        width: 530px;
+        padding-top: map-get($spacers, 3);
+    }
+
+    .o_loadtest_chart {
+        position: relative;
+        height: 220px;
+    }
+}

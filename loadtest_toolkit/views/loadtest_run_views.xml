@@ -124,6 +124,11 @@
                         </page>
                     </notebook>
                 </sheet>
+                <!-- full-width timeline charts under the sheet, fed by the
+                     poll samples; hidden until the first sample exists -->
+                <div class="o_loadtest_run_charts" invisible="not sample_count">
+                    <field name="chart_data" widget="loadtest_run_charts" nolabel="1" />
+                </div>
             </form>
         </field>
     </record>

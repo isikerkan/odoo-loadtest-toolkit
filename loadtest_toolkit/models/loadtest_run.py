@@ -85,6 +85,7 @@ class LoadtestRun(models.Model):
     result_ids = fields.One2many("loadtest.run.result", "run_id", readonly=True)
     sample_ids = fields.One2many("loadtest.run.sample", "run_id", readonly=True)
     sample_count = fields.Integer(compute="_compute_sample_count")
+    chart_data = fields.Json(compute="_compute_chart_data")
 
     # latest system sample (live view)
     sys_cpu = fields.Float(readonly=True, string="CPU %")
@@ -391,6 +392,29 @@ class LoadtestRun(models.Model):
     def _compute_sample_count(self):
         for run in self:
             run.sample_count = len(run.sample_ids)
+
+    CHART_SERIES = (
+        "users",
+        "current_rps",
+        "p50",
+        "p95",
+        "fail_ratio",
+        "cpu",
+        "mem",
+        "pg_active",
+        "pg_total",
+    )
+
+    @api.depends("sample_ids")
+    def _compute_chart_data(self):
+        """Timeline of the run for the charts widget on the form: one
+        label per sample (ISO timestamp) and one list per series."""
+        for run in self:
+            samples = run.sample_ids.sorted("id")
+            run.chart_data = {
+                "labels": [fields.Datetime.to_string(s.sampled_at) for s in samples],
+                "series": {name: samples.mapped(name) for name in self.CHART_SERIES},
+            }
 
     def action_view_samples(self):
         """Open the run's samples as a line chart over time (Odoo graph
