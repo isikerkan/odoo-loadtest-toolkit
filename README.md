@@ -16,7 +16,7 @@ spawned the same way.
 | Model | Purpose |
 |-------|---------|
 | Data Batch | test users (`loadtest_NNN`) + partners/products/orders they work on; per-type Generate / Clean Up, dependency-aware |
-| Journey | catalog of Locust user classes shipped in `locustfiles/journeys.py`: Browser, Sales Rep, Chatter, Catalog Editor |
+| Journey | catalog of Locust user classes shipped in `locustfiles/journeys.py`: Browser, Sales Rep, Chatter, Catalog Editor, Presence (bus websocket), Error Lab (sentry_error_lab endpoints) |
 | Scenario | batch + target URL + virtual users, spawn rate, duration, worker count + weighted journey mix |
 | Run | one execution: Start / Stop / Restart / Repeat, live users/rps/failures while running, final p50/p95/p99 and per-endpoint table from Locust's CSV, process list, log excerpt, optional Sentry link for the exact time window |
 
