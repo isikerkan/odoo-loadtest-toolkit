@@ -69,7 +69,12 @@ While *Running* the form shows:
   active and total PostgreSQL connections of this database.
 - *Results per Endpoint*: the live per-request table (median, average,
   p95, p99, req/s), replaced by the CSV figures when the run ends.
-- *Samples*: one row per poll combining Locust and system figures.
+- *Samples*: one row per poll combining Locust and system figures
+  (users, current and average requests/s, p50/p95 of the last seconds,
+  failure ratio, CPU, RAM, PostgreSQL connections).
+- Charts under the sheet: throughput, latency and failures, host and
+  database load, one point per sample. The *Samples* smart button opens
+  the same data in Odoo's graph view for a single measure over time.
 - *Processes*: master and worker PIDs with an *Alive* flag.
 - *Port*: the local port of the Locust web UI (`http://127.0.0.1:<port>`)
   if you want to look at Locust's own charts.
