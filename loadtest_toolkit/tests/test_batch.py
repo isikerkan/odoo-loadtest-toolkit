@@ -3,10 +3,13 @@
 from unittest.mock import patch
 
 from odoo.exceptions import UserError
-from odoo.tests import TransactionCase
+from odoo.tests import TransactionCase, tagged
 from odoo.tools import config
 
 
+# post_install: the batch creates sale orders, and modules that extend
+# sale.order with NOT NULL columns (sale_stock) may load after this one
+@tagged("post_install", "-at_install")
 class TestLoadtestBatch(TransactionCase):
     def _batch(self, **overrides):
         values = {"user_count": 2, "partner_count": 6, "product_count": 3, "order_count": 4}
@@ -75,18 +78,22 @@ class TestLoadtestBatch(TransactionCase):
         self.assertEqual(batch.state, "partial")
 
     def test_user_index_numeric_not_lexicographic(self):
-        # loadtest_999 sorts after loadtest_1000 as a string; the next
-        # index must still be 1001
+        # "loadtest_999" sorts after "loadtest_1000" as a string; the next
+        # index must still be numeric. Pick the digit-length boundary above
+        # whatever already exists so the test also passes on a database
+        # that has load-test users.
+        current = self.env["loadtest.batch"]._next_user_index()
+        boundary = 10 ** len(str(current)) - 1  # 999, 9999, ...
         self.env["res.users"].create(
             [
-                {"name": "LT 999", "login": "loadtest_999", "active": False},
-                {"name": "LT 1000", "login": "loadtest_1000", "active": False},
+                {"name": "LT low", "login": f"loadtest_{boundary}", "active": False},
+                {"name": "LT high", "login": f"loadtest_{boundary + 1}", "active": False},
             ]
         )
         batch = self._batch(partner_count=0, product_count=0, order_count=0, user_count=1)
         with self._enabled():
             batch.action_generate_users()
-        self.assertEqual(batch.user_ids.login, "loadtest_1001")
+        self.assertEqual(batch.user_ids.login, f"loadtest_{boundary + 2}")
 
     def test_user_index_continues(self):
         with self._enabled():
