@@ -1,0 +1,1096 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="Docutils: https://docutils.sourceforge.io/" />
+<title>Load Test Toolkit</title>
+<style type="text/css">
+
+/*
+:Author: David Goodger (goodger@python.org)
+:Id: $Id: html4css1.css 9511 2024-01-13 09:50:07Z milde $
+:Copyright: This stylesheet has been placed in the public domain.
+
+Default cascading style sheet for the HTML output of Docutils.
+Despite the name, some widely supported CSS2 features are used.
+
+See https://docutils.sourceforge.io/docs/howto/html-stylesheets.html for how to
+customize this style sheet.
+*/
+
+/* used to remove borders from tables and images */
+.borderless, table.borderless td, table.borderless th {
+  border: 0 }
+
+table.borderless td, table.borderless th {
+  /* Override padding for "table.docutils td" with "! important".
+     The right padding separates the table cells. */
+  padding: 0 0.5em 0 0 ! important }
+
+.first {
+  /* Override more specific margin styles with "! important". */
+  margin-top: 0 ! important }
+
+.last, .with-subtitle {
+  margin-bottom: 0 ! important }
+
+.hidden {
+  display: none }
+
+.subscript {
+  vertical-align: sub;
+  font-size: smaller }
+
+.superscript {
+  vertical-align: super;
+  font-size: smaller }
+
+a.toc-backref {
+  text-decoration: none ;
+  color: black }
+
+blockquote.epigraph {
+  margin: 2em 5em ; }
+
+dl.docutils dd {
+  margin-bottom: 0.5em }
+
+object[type="image/svg+xml"], object[type="application/x-shockwave-flash"] {
+  overflow: hidden;
+}
+
+/* Uncomment (and remove this text!) to get bold-faced definition list terms
+dl.docutils dt {
+  font-weight: bold }
+*/
+
+div.abstract {
+  margin: 2em 5em }
+
+div.abstract p.topic-title {
+  font-weight: bold ;
+  text-align: center }
+
+div.admonition, div.attention, div.caution, div.danger, div.error,
+div.hint, div.important, div.note, div.tip, div.warning {
+  margin: 2em ;
+  border: medium outset ;
+  padding: 1em }
+
+div.admonition p.admonition-title, div.hint p.admonition-title,
+div.important p.admonition-title, div.note p.admonition-title,
+div.tip p.admonition-title {
+  font-weight: bold ;
+  font-family: sans-serif }
+
+div.attention p.admonition-title, div.caution p.admonition-title,
+div.danger p.admonition-title, div.error p.admonition-title,
+div.warning p.admonition-title, .code .error {
+  color: red ;
+  font-weight: bold ;
+  font-family: sans-serif }
+
+/* Uncomment (and remove this text!) to get reduced vertical space in
+   compound paragraphs.
+div.compound .compound-first, div.compound .compound-middle {
+  margin-bottom: 0.5em }
+
+div.compound .compound-last, div.compound .compound-middle {
+  margin-top: 0.5em }
+*/
+
+div.dedication {
+  margin: 2em 5em ;
+  text-align: center ;
+  font-style: italic }
+
+div.dedication p.topic-title {
+  font-weight: bold ;
+  font-style: normal }
+
+div.figure {
+  margin-left: 2em ;
+  margin-right: 2em }
+
+div.footer, div.header {
+  clear: both;
+  font-size: smaller }
+
+div.line-block {
+  display: block ;
+  margin-top: 1em ;
+  margin-bottom: 1em }
+
+div.line-block div.line-block {
+  margin-top: 0 ;
+  margin-bottom: 0 ;
+  margin-left: 1.5em }
+
+div.sidebar {
+  margin: 0 0 0.5em 1em ;
+  border: medium outset ;
+  padding: 1em ;
+  background-color: #ffffee ;
+  width: 40% ;
+  float: right ;
+  clear: right }
+
+div.sidebar p.rubric {
+  font-family: sans-serif ;
+  font-size: medium }
+
+div.system-messages {
+  margin: 5em }
+
+div.system-messages h1 {
+  color: red }
+
+div.system-message {
+  border: medium outset ;
+  padding: 1em }
+
+div.system-message p.system-message-title {
+  color: red ;
+  font-weight: bold }
+
+div.topic {
+  margin: 2em }
+
+h1.section-subtitle, h2.section-subtitle, h3.section-subtitle,
+h4.section-subtitle, h5.section-subtitle, h6.section-subtitle {
+  margin-top: 0.4em }
+
+h1.title {
+  text-align: center }
+
+h2.subtitle {
+  text-align: center }
+
+hr.docutils {
+  width: 75% }
+
+img.align-left, .figure.align-left, object.align-left, table.align-left {
+  clear: left ;
+  float: left ;
+  margin-right: 1em }
+
+img.align-right, .figure.align-right, object.align-right, table.align-right {
+  clear: right ;
+  float: right ;
+  margin-left: 1em }
+
+img.align-center, .figure.align-center, object.align-center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+table.align-center {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.align-left {
+  text-align: left }
+
+.align-center {
+  clear: both ;
+  text-align: center }
+
+.align-right {
+  text-align: right }
+
+/* reset inner alignment in figures */
+div.align-right {
+  text-align: inherit }
+
+/* div.align-center * { */
+/*   text-align: left } */
+
+.align-top    {
+  vertical-align: top }
+
+.align-middle {
+  vertical-align: middle }
+
+.align-bottom {
+  vertical-align: bottom }
+
+ol.simple, ul.simple {
+  margin-bottom: 1em }
+
+ol.arabic {
+  list-style: decimal }
+
+ol.loweralpha {
+  list-style: lower-alpha }
+
+ol.upperalpha {
+  list-style: upper-alpha }
+
+ol.lowerroman {
+  list-style: lower-roman }
+
+ol.upperroman {
+  list-style: upper-roman }
+
+p.attribution {
+  text-align: right ;
+  margin-left: 50% }
+
+p.caption {
+  font-style: italic }
+
+p.credits {
+  font-style: italic ;
+  font-size: smaller }
+
+p.label {
+  white-space: nowrap }
+
+p.rubric {
+  font-weight: bold ;
+  font-size: larger ;
+  color: maroon ;
+  text-align: center }
+
+p.sidebar-title {
+  font-family: sans-serif ;
+  font-weight: bold ;
+  font-size: larger }
+
+p.sidebar-subtitle {
+  font-family: sans-serif ;
+  font-weight: bold }
+
+p.topic-title {
+  font-weight: bold }
+
+pre.address {
+  margin-bottom: 0 ;
+  margin-top: 0 ;
+  font: inherit }
+
+pre.literal-block, pre.doctest-block, pre.math, pre.code {
+  margin-left: 2em ;
+  margin-right: 2em }
+
+pre.code .ln { color: gray; } /* line numbers */
+pre.code, code { background-color: #eeeeee }
+pre.code .comment, code .comment { color: #5C6576 }
+pre.code .keyword, code .keyword { color: #3B0D06; font-weight: bold }
+pre.code .literal.string, code .literal.string { color: #0C5404 }
+pre.code .name.builtin, code .name.builtin { color: #352B84 }
+pre.code .deleted, code .deleted { background-color: #DEB0A1}
+pre.code .inserted, code .inserted { background-color: #A3D289}
+
+span.classifier {
+  font-family: sans-serif ;
+  font-style: oblique }
+
+span.classifier-delimiter {
+  font-family: sans-serif ;
+  font-weight: bold }
+
+span.interpreted {
+  font-family: sans-serif }
+
+span.option {
+  white-space: nowrap }
+
+span.pre {
+  white-space: pre }
+
+span.problematic, pre.problematic {
+  color: red }
+
+span.section-subtitle {
+  /* font-size relative to parent (h1..h6 element) */
+  font-size: 80% }
+
+table.citation {
+  border-left: solid 1px gray;
+  margin-left: 1px }
+
+table.docinfo {
+  margin: 2em 4em }
+
+table.docutils {
+  margin-top: 0.5em ;
+  margin-bottom: 0.5em }
+
+table.footnote {
+  border-left: solid 1px black;
+  margin-left: 1px }
+
+table.docutils td, table.docutils th,
+table.docinfo td, table.docinfo th {
+  padding-left: 0.5em ;
+  padding-right: 0.5em ;
+  vertical-align: top }
+
+table.docutils th.field-name, table.docinfo th.docinfo-name {
+  font-weight: bold ;
+  text-align: left ;
+  white-space: nowrap ;
+  padding-left: 0 }
+
+/* "booktabs" style (no vertical lines) */
+table.docutils.booktabs {
+  border: 0px;
+  border-top: 2px solid;
+  border-bottom: 2px solid;
+  border-collapse: collapse;
+}
+table.docutils.booktabs * {
+  border: 0px;
+}
+table.docutils.booktabs th {
+  border-bottom: thin solid;
+  text-align: left;
+}
+
+h1 tt.docutils, h2 tt.docutils, h3 tt.docutils,
+h4 tt.docutils, h5 tt.docutils, h6 tt.docutils {
+  font-size: 100% }
+
+ul.auto-toc {
+  list-style-type: none }
+
+</style>
+</head>
+<body>
+<div class="document" id="load-test-toolkit">
+<h1 class="title">Load Test Toolkit</h1>
+
+<!-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! This file is generated by oca-gen-addon-readme !!
+!! changes will be overwritten.                   !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! source digest: sha256:22e0e5a314935c8fa17a351aa439fbdb36575e5debedf257ff4f89e659947fbe
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! -->
+<p><a class="reference external image-reference" href="https://odoo-community.org/page/development-status"><img alt="Beta" src="https://img.shields.io/badge/maturity-Beta-yellow.png" /></a> <a class="reference external image-reference" href="http://www.gnu.org/licenses/agpl-3.0-standalone.html"><img alt="License: AGPL-3" src="https://img.shields.io/badge/licence-AGPL--3-blue.png" /></a> <a class="reference external image-reference" href="https://github.com/isikerkan/odoo-loadtest-toolkit/tree/18.0/loadtest_toolkit"><img alt="isikerkan/odoo-loadtest-toolkit" src="https://img.shields.io/badge/github-isikerkan%2Fodoo--loadtest--toolkit-lightgray.png?logo=github" /></a></p>
+<p>This module turns an Odoo 18 instance into a control plane for
+<a class="reference external" href="https://locust.io">Locust</a> load tests. From the <em>Load Testing</em> app
+you generate disposable test data, describe what the virtual users
+should do, start a run and read the results, without leaving Odoo.</p>
+<div class="section" id="two-tier-architecture">
+<h1>Two-tier architecture</h1>
+<p>Locust is <strong>never imported into the Odoo process</strong>: it monkey-patches
+the interpreter with gevent, which would corrupt the Odoo worker.
+Instead each run:</p>
+<ol class="arabic simple">
+<li>picks a free TCP port on <tt class="docutils literal">127.0.0.1</tt>,</li>
+<li>spawns <tt class="docutils literal">python <span class="pre">-m</span> locust</tt> as a <strong>detached child process</strong> (its own
+session, stdout/stderr redirected to a log file under the Odoo data
+directory), in web mode with <tt class="docutils literal"><span class="pre">--autostart</span></tt> and <tt class="docutils literal"><span class="pre">--autoquit</span></tt>,</li>
+<li>drives that process through <strong>Locust’s REST API</strong>
+(<tt class="docutils literal">GET /stats/requests</tt> for live figures, <tt class="docutils literal">GET /stop</tt> to end the
+run),</li>
+<li>reads Locust’s <strong>CSV export</strong> as the authoritative final result and
+stores it on the run record.</li>
+</ol>
+<p>Distributed mode works the same way: the run spawns one master and <em>n</em>
+worker processes and the master waits for <tt class="docutils literal"><span class="pre">--expect-workers</span></tt>.</p>
+</div>
+<div class="section" id="concepts">
+<h1>Concepts</h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<thead valign="bottom">
+<tr><th class="head">Model</th>
+<th class="head">Purpose</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr><td><strong>Data Batch</strong>
+(<tt class="docutils literal">loadtest.batch</tt>)</td>
+<td>Disposable test users
+(<tt class="docutils literal">loadtest_NNN</tt>) plus the
+partners, products and sale
+orders they work on. Per-type
+<em>Generate</em> and <em>Clean Up</em>
+actions, dependency aware
+(orders need users, partners and
+products; nothing under an order
+can be cleaned while orders
+exist). Cleanup also removes
+what the test users created
+during runs and archives the
+users.</td>
+</tr>
+<tr><td><strong>Journey</strong>
+(<tt class="docutils literal">loadtest.journey</tt>)</td>
+<td>Catalog entry for one Locust
+user class shipped in
+<tt class="docutils literal">locustfiles/journeys.py</tt>
+(Browser, Sales Rep, Chatter,
+Catalog Editor, Presence, Error
+Lab). The <tt class="docutils literal">code</tt> is the class
+name passed to Locust.</td>
+</tr>
+<tr><td><strong>Scenario</strong>
+(<tt class="docutils literal">loadtest.scenario</tt>)</td>
+<td>A data batch, a target URL, the
+load profile (virtual users,
+spawn rate, duration as value +
+unit or infinite, worker
+processes) and a weighted mix of
+journeys.</td>
+</tr>
+<tr><td><strong>Run</strong> (<tt class="docutils literal">loadtest.run</tt>)</td>
+<td>One execution of a scenario:
+Start / Stop / Restart / Repeat,
+live users, requests per second
+and failures while running,
+final p50/p95/p99 and
+per-endpoint table from Locust’s
+CSV, the spawned process list,
+the tail of the master log, and
+an optional Sentry link for the
+exact time window.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="system-sampling">
+<h1>System sampling</h1>
+<p>Every poll (a cron every minute, or the <em>Refresh</em> button) also stores a
+<tt class="docutils literal">loadtest.run.sample</tt>: CPU %, RAM % and RAM used, the Odoo process
+RSS, CPU core count (via <tt class="docutils literal">psutil</tt>, when installed) and the number of
+active and total PostgreSQL connections of the current database
+(<tt class="docutils literal">pg_stat_activity</tt>). The run shows the latest sample live and an
+average/maximum summary once finished. The sample describes the host the
+Odoo control plane runs on; when the scenario targets a remote instance
+it does <strong>not</strong> measure that instance.</p>
+</div>
+<div class="section" id="sentry-link">
+<h1>Sentry link</h1>
+<p>When the server option <tt class="docutils literal">loadtest_sentry_org</tt> is set, each run gets an
+<em>Open in Sentry</em> button that opens the Sentry Traces explorer for the
+organisation, filtered on the run’s start and end time. The optional
+<em>Error Lab</em> journey pairs with the separate <tt class="docutils literal">sentry_error_lab</tt> module
+to produce a known error volume during a run.</p>
+<p><strong>Table of contents</strong></p>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#installation" id="toc-entry-1">Installation</a></li>
+</ul>
+</div>
+<div class="section" id="installation">
+<h2><a class="toc-backref" href="#toc-entry-1">Installation</a></h2>
+</div>
+</div>
+<div class="section" id="python-dependencies">
+<h1>Python dependencies</h1>
+<p>The module is used from the Odoo process <strong>and</strong> from the Locust child
+process it spawns, so all packages must be installed in the same Python
+environment (virtualenv) that runs Odoo:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="32%" />
+<col width="39%" />
+<col width="29%" />
+</colgroup>
+<thead valign="bottom">
+<tr><th class="head">Package</th>
+<th class="head">Imported by</th>
+<th class="head">Purpose</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr><td><tt class="docutils literal">locust</tt></td>
+<td>the spawned child process
+only (<tt class="docutils literal">python <span class="pre">-m</span> locust</tt>)</td>
+<td>load generator;
+never imported
+inside Odoo</td>
+</tr>
+<tr><td><tt class="docutils literal">requests</tt></td>
+<td><tt class="docutils literal">models/loadtest_run.py</tt></td>
+<td>polling Locust’s
+REST API on
+<tt class="docutils literal">127.0.0.1</tt></td>
+</tr>
+<tr><td><tt class="docutils literal"><span class="pre">websocket-client</span></tt>
+(<tt class="docutils literal">import websocket</tt>)</td>
+<td><tt class="docutils literal">locustfiles/journeys.py</tt></td>
+<td>the <em>Presence</em>
+journey; optional,
+the journey fails at
+start when missing</td>
+</tr>
+<tr><td><tt class="docutils literal">psutil</tt></td>
+<td><tt class="docutils literal">models/loadtest_run.py</tt></td>
+<td>CPU/RAM/RSS
+sampling; optional,
+samples fall back to
+PostgreSQL counters
+only</td>
+</tr>
+</tbody>
+</table>
+<pre class="code sh literal-block">
+/path/to/odoo-venv/bin/pip<span class="w"> </span>install<span class="w"> </span>locust<span class="w"> </span>requests<span class="w"> </span>websocket-client<span class="w"> </span>psutil
+</pre>
+<p>Locust is launched as <tt class="docutils literal">sys.executable <span class="pre">-m</span> locust</tt>, i.e. with the very
+interpreter that runs Odoo. It does not need to be on <tt class="docutils literal">PATH</tt>; it needs
+to be importable by that interpreter.</p>
+</div>
+<div class="section" id="odoo-module">
+<h1>Odoo module</h1>
+<ol class="arabic simple">
+<li>Put <tt class="docutils literal">loadtest_toolkit</tt> in an addons path.</li>
+<li>Install it (it depends on <tt class="docutils literal">sale</tt>; the <em>Load Testing</em> app appears in
+the app switcher for administrators, <tt class="docutils literal">base.group_system</tt>).</li>
+<li>Add <tt class="docutils literal">loadtest_enabled = true</tt> to the server configuration (see
+<em>Configure</em>). Without it data generation and run start are refused.</li>
+</ol>
+</div>
+<div class="section" id="network-and-filesystem">
+<h1>Network and filesystem</h1>
+<ul class="simple">
+<li>Each run binds Locust’s web UI/REST API to <tt class="docutils literal">127.0.0.1</tt> on a <strong>random
+free port</strong> chosen at start (shown in the <em>Port</em> field of the run).
+Workers connect to the master on <tt class="docutils literal">127.0.0.1</tt> as well. Nothing
+listens on a public interface.</li>
+<li>Run artefacts (<tt class="docutils literal">master.log</tt>, <tt class="docutils literal">worker_N.log</tt>, <tt class="docutils literal"><span class="pre">stats_*.csv</span></tt>) live
+in <tt class="docutils literal"><span class="pre">&lt;data_dir&gt;/loadtest/run_&lt;id&gt;/</span></tt>. The Odoo system user needs write
+access to <tt class="docutils literal">data_dir</tt> (it already has it for the filestore).</li>
+<li>The virtual users hit the scenario’s <em>Target URL</em> over HTTP(S) and,
+for the <em>Presence</em> journey, <tt class="docutils literal"><span class="pre">ws(s)://&lt;target&gt;/websocket</span></tt>. The target
+must serve the same database the batch users live in.</li>
+</ul>
+</div>
+<div class="section" id="optional-helper">
+<h1>Optional helper</h1>
+<p><tt class="docutils literal">scripts/clone_db.sh &lt;source&gt; &lt;clone&gt;</tt> (repository root, not part of
+the addon) copies a database with <tt class="docutils literal">CREATE DATABASE ... TEMPLATE</tt> after
+terminating open connections and deactivates every outgoing mail server
+on the clone, so a load test can run against a copy of real data.</p>
+<div class="section" id="configuration">
+<h2>Configuration</h2>
+</div>
+</div>
+<div class="section" id="server-configuration-odoo-conf">
+<h1>Server configuration (odoo.conf)</h1>
+<p>The module reads these keys from the Odoo server configuration
+(<tt class="docutils literal">odoo.tools.config</tt>), not from system parameters:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="14%" />
+<col width="62%" />
+</colgroup>
+<thead valign="bottom">
+<tr><th class="head">Key</th>
+<th class="head">Default</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr><td><tt class="docutils literal">loadtest_enabled</tt></td>
+<td><tt class="docutils literal">false</tt></td>
+<td>Safety guard. Must be <tt class="docutils literal">true</tt> for <em>Generate</em> actions on data
+batches and for starting a run. Any other value (or absence)
+makes those actions raise an error, so the module can sit
+installed on an unprepared database without being able to
+create data.</td>
+</tr>
+<tr><td><tt class="docutils literal">loadtest_sentry_org</tt></td>
+<td>unset</td>
+<td>Sentry organisation slug. When set, runs compute a
+<tt class="docutils literal">sentry_url</tt> pointing at
+<tt class="docutils literal"><span class="pre">https://&lt;org&gt;.sentry.io/explore/traces/?start=...&amp;end=...</span></tt>
+for the run’s time window and show an <em>Open in Sentry</em>
+button.</td>
+</tr>
+<tr><td><tt class="docutils literal">data_dir</tt></td>
+<td>Odoo default</td>
+<td>Standard Odoo option; run artefacts are written to
+<tt class="docutils literal"><span class="pre">&lt;data_dir&gt;/loadtest/run_&lt;id&gt;/</span></tt>.</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<pre class="code ini literal-block">
+<span class="k">[options]</span><span class="w">
+</span><span class="na">loadtest_enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">true</span><span class="w">
+</span><span class="na">loadtest_sentry_org</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">my-org</span>
+</pre>
+</div>
+<div class="section" id="environment-variables-read-by-the-locust-process">
+<h1>Environment variables read by the Locust process</h1>
+<p><tt class="docutils literal">locustfiles/journeys.py</tt> is configured through environment variables.
+The run sets all but the last one automatically when it spawns Locust;
+they are documented so the locustfile can also be launched by hand.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="26%" />
+<col width="18%" />
+<col width="31%" />
+</colgroup>
+<thead valign="bottom">
+<tr><th class="head">Variable</th>
+<th class="head">Set by the run to</th>
+<th class="head">Default in the
+locustfile</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr><td><tt class="docutils literal">ODOO_DB</tt></td>
+<td>the current database name</td>
+<td><tt class="docutils literal">&quot;&quot;</tt></td>
+<td>Database passed to
+<tt class="docutils literal">/web/session/authenticate</tt>.</td>
+</tr>
+<tr><td><tt class="docutils literal">LOADTEST_LOGINS</tt></td>
+<td>comma-separated logins of
+the batch’s test users</td>
+<td>empty, falls
+back to
+<tt class="docutils literal">loadtest_001</tt></td>
+<td>Virtual users cycle through
+these logins.</td>
+</tr>
+<tr><td><tt class="docutils literal">LOADTEST_PASSWORD</tt></td>
+<td>the batch’s <em>Password</em>
+field</td>
+<td><tt class="docutils literal">loadtest</tt></td>
+<td>Shared password of the test
+users.</td>
+</tr>
+<tr><td><tt class="docutils literal">LOADTEST_WEIGHTS</tt></td>
+<td>JSON
+<tt class="docutils literal">{&quot;ClassName&quot;: weight}</tt>
+from the scenario’s
+journey mix</td>
+<td><tt class="docutils literal">{}</tt> (class
+defaults:
+Browser 3,
+SalesRep 2,
+Chatter 1,
+CatalogEditor 1,
+Presence 2,
+ErrorLab 1)</td>
+<td>Relative share of virtual
+users per journey. Only
+classes with weight &gt; 0 are
+passed on the command line.</td>
+</tr>
+<tr><td><tt class="docutils literal">LOADTEST_WS_VERSION</tt></td>
+<td>not set (inherited from
+the Odoo process
+environment)</td>
+<td><tt class="docutils literal"><span class="pre">18.0-7</span></tt></td>
+<td><tt class="docutils literal">version</tt> query parameter of
+the bus websocket handshake
+used by the <em>Presence</em>
+journey. Adjust if the target
+runs a different bus protocol
+version.</td>
+</tr>
+</tbody>
+</table>
+<p>The child process inherits the full environment of the Odoo process, so
+<tt class="docutils literal">LOADTEST_WS_VERSION</tt> (or proxy variables) can be set on the Odoo
+service.</p>
+</div>
+<div class="section" id="journey-catalog">
+<h1>Journey catalog</h1>
+<p><em>Load Testing &gt; Configuration &gt; Journeys</em> lists the available Locust
+user classes. <tt class="docutils literal">code</tt> must match a class name in
+<tt class="docutils literal">locustfiles/journeys.py</tt>. Entries can be archived to hide them from
+the scenario mix; the records are shipped as <tt class="docutils literal">noupdate</tt> data, so local
+edits survive module updates.</p>
+</div>
+<div class="section" id="login-cooldown-on-the-target">
+<h1>Login cooldown on the target</h1>
+<p>All virtual users share one source IP. After a run with a wrong batch
+password Odoo’s per-IP login throttling (<tt class="docutils literal">res.users._assert_can_auth</tt>)
+blocks every further login for several minutes. On load-test instances
+raise the threshold with the system parameter
+<tt class="docutils literal">base.login_cooldown_after = 50</tt> (<tt class="docutils literal">0</tt> disables it).</p>
+<div class="section" id="usage">
+<h2>Usage</h2>
+<p>All menus are under the <em>Load Testing</em> app (administrators only).</p>
+</div>
+</div>
+<div class="section" id="generate-a-data-batch">
+<h1>1. Generate a data batch</h1>
+<p><em>Load Testing &gt; Data Batches &gt; New</em>.</p>
+<ul class="simple">
+<li>Set the volumes: <em>Test users</em> (default 10), <em>Partners</em> (100),
+<em>Products</em> (50), <em>Orders</em> (200) and the shared <em>Password</em> (default
+<tt class="docutils literal">loadtest</tt>; editable until users exist).</li>
+<li><em>Generate All</em> creates everything still missing in dependency order:
+users (<tt class="docutils literal">loadtest_NNN</tt>, <tt class="docutils literal">Load Test NNN</tt>, e-mail
+<tt class="docutils literal">&#64;loadtest.invalid</tt>, with Internal User + Salesman + Sales Manager
+rights), partners (every fourth one a company), service products
+(<tt class="docutils literal">LT&lt;batch&gt; Product NNNNN</tt>) and sale orders created <em>as</em> the test
+users, one in three confirmed.</li>
+<li>The per-type <em>Generate Users / Partners / Products / Orders</em> buttons
+do one step at a time; orders require the other three first.</li>
+<li>Smart buttons open the generated records; the state badge shows
+<em>Empty</em>, <em>Partially Generated</em> or <em>Generated</em>.</li>
+</ul>
+<p>User indexes continue across batches (<tt class="docutils literal">loadtest_011</tt>, …) and are
+computed numerically, so logins never collide.</p>
+</div>
+<div class="section" id="pick-journeys">
+<h1>2. Pick journeys</h1>
+<p><em>Configuration &gt; Journeys</em> lists the Locust user classes from
+<tt class="docutils literal">locustfiles/journeys.py</tt>:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="24%" />
+<col width="28%" />
+<col width="49%" />
+</colgroup>
+<thead valign="bottom">
+<tr><th class="head">Journey</th>
+<th class="head">Code</th>
+<th class="head">What the virtual user does</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr><td>Browser</td>
+<td><tt class="docutils literal">Browser</tt></td>
+<td>Read-only:
+partner/product/order
+<tt class="docutils literal">search_read</tt> lists, a random
+partner form, product
+<tt class="docutils literal">name_search</tt>.</td>
+</tr>
+<tr><td>Sales Rep</td>
+<td><tt class="docutils literal">SalesRep</tt></td>
+<td>Browses orders and partners;
+creates a sale order with one
+line, confirms it and posts a
+chatter message.</td>
+</tr>
+<tr><td>Chatter</td>
+<td><tt class="docutils literal">Chatter</tt></td>
+<td>Posts internal notes on company
+partners, reads
+<tt class="docutils literal">mail.message</tt> threads of
+orders, opens partner forms.</td>
+</tr>
+<tr><td>Catalog Editor</td>
+<td><tt class="docutils literal">CatalogEditor</tt></td>
+<td>Creates partners and product
+templates (needs Sales Manager
+rights, which the batch
+grants), browses products.</td>
+</tr>
+<tr><td>Presence</td>
+<td><tt class="docutils literal">Presence</tt></td>
+<td>Behaves like an idle open
+browser tab: opens the bus
+websocket (<tt class="docutils literal">/websocket</tt>),
+subscribes, sends
+<tt class="docutils literal">update_presence</tt> heartbeats
+every 20-40 s, drains
+notifications, occasionally
+reads the inbox. Requires
+<tt class="docutils literal"><span class="pre">websocket-client</span></tt>. Each
+connection pins one server
+thread in threaded mode.</td>
+</tr>
+<tr><td>Error Lab</td>
+<td><tt class="docutils literal">ErrorLab</tt></td>
+<td>Calls the <tt class="docutils literal">sentry_error_lab</tt>
+endpoints (<tt class="docutils literal">/boom</tt>, <tt class="docutils literal">/sql</tt>,
+<tt class="docutils literal">/slow</tt>, <tt class="docutils literal">/http_boom</tt>) so
+Sentry receives a known error
+volume. Deliberate errors count
+as success; HTTP 404 (module
+missing), <em>Forbidden</em> (lab not
+enabled) or an unexpected
+result count as failures.
+Requires the separate
+<tt class="docutils literal">sentry_error_lab</tt> module on
+the target.</td>
+</tr>
+</tbody>
+</table>
+<p>All journeys log in with a real session (<tt class="docutils literal">/web/session/authenticate</tt>)
+and use <tt class="docutils literal">/web/dataset/call_kw</tt>, the same payloads the web client
+sends. An authentication failure aborts that virtual user with an error.</p>
+</div>
+<div class="section" id="create-a-scenario">
+<h1>3. Create a scenario</h1>
+<p><em>Load Testing &gt; Scenarios &gt; New</em>.</p>
+<ul class="simple">
+<li><em>Batch</em>: the data batch whose users will log in.</li>
+<li><em>Target URL</em>: defaults to <tt class="docutils literal">web.base.url</tt>; point it at another
+instance serving the same database to load-test that one.</li>
+<li><em>Load Profile</em>: concurrent virtual users (&gt;= 1), spawn rate per second
+(&gt; 0), <em>Duration</em> as a value plus unit (<em>Seconds</em>, <em>Minutes</em>, <em>Hours</em>,
+<em>Days</em>) or <em>Infinite</em>, and <em>Locust worker processes</em> (0 = single
+process).</li>
+<li><em>Journey Mix</em>: one line per journey with an integer <em>Weight</em>; lines
+with weight 0 are ignored, at least one line must be &gt; 0.</li>
+</ul>
+<p>Finite durations are passed to Locust as <tt class="docutils literal"><span class="pre">-t</span> &lt;seconds&gt;s</tt>; infinite
+runs end via <em>Stop</em> or the run’s <em>Stop At</em> time.</p>
+</div>
+<div class="section" id="start-a-run">
+<h1>4. Start a run</h1>
+<p><em>New Run</em> on the scenario (or <em>Runs &gt; New</em>), then <em>Start</em>. The module
+checks <tt class="docutils literal">loadtest_enabled</tt>, that the batch has users and that no other
+run of the same scenario is running, then spawns Locust.</p>
+<p>While <em>Running</em> the form shows:</p>
+<ul class="simple">
+<li><em>Live</em>: Locust state, current users, requests/s, requests, failures
+and failure ratio.</li>
+<li><em>System (live)</em>: CPU %, cores, RAM %, RAM used (GB), Odoo RSS (MB),
+active and total PostgreSQL connections of this database.</li>
+<li><em>Results per Endpoint</em>: the live per-request table (median, average,
+p95, p99, req/s), replaced by the CSV figures when the run ends.</li>
+<li><em>Samples</em>: one row per poll combining Locust and system figures.</li>
+<li><em>Processes</em>: master and worker PIDs with an <em>Alive</em> flag.</li>
+<li><em>Port</em>: the local port of the Locust web UI
+(<tt class="docutils literal"><span class="pre">http://127.0.0.1:&lt;port&gt;</span></tt>) if you want to look at Locust’s own
+charts.</li>
+</ul>
+<p>A cron (<em>Load Testing: poll running runs</em>) refreshes every minute;
+<em>Refresh</em> does it on demand. <em>Stop At</em> can be set or changed on a
+running run; the poll stops the run once the time has passed (up to a
+minute of slack).</p>
+</div>
+<div class="section" id="stop-restart-repeat">
+<h1>5. Stop, restart, repeat</h1>
+<ul class="simple">
+<li><em>Stop</em>: asks Locust to stop, waits two seconds for the CSV flush,
+terminates the process group, ingests the CSV and stores the last 40
+lines of <tt class="docutils literal">master.log</tt>. The run ends <em>Done</em> when the CSV had
+per-endpoint rows, otherwise <em>Failed</em>.</li>
+<li><em>Restart</em>: stop then start again on the same record; results, samples
+and processes are reset.</li>
+<li><em>Repeat</em>: creates a fresh run of the same scenario (notes copied) and
+starts it; use it for before/after comparisons.</li>
+<li>A run also ends by itself when the duration elapses (Locust exits
+after <tt class="docutils literal"><span class="pre">--autoquit</span> 10</tt>), when the master process dies (the run turns
+<em>Failed</em>, results are salvaged if a CSV exists), or after three
+consecutive polls without an answer from Locust.</li>
+<li>Running runs cannot be deleted.</li>
+</ul>
+</div>
+<div class="section" id="distributed-workers">
+<h1>6. Distributed workers</h1>
+<p>Set <em>Locust worker processes</em> &gt; 0 on the scenario. The run spawns the
+master with <tt class="docutils literal"><span class="pre">--master</span> <span class="pre">--expect-workers</span> N</tt> and N workers with
+<tt class="docutils literal"><span class="pre">--worker</span> <span class="pre">--master-host</span> 127.0.0.1</tt>, each with its own
+<tt class="docutils literal">worker_N.log</tt>. Workers run on the same host as Odoo; use them when a
+single Locust process cannot generate enough load (Locust is CPU bound
+per process).</p>
+</div>
+<div class="section" id="reading-results">
+<h1>7. Reading results</h1>
+<ul class="simple">
+<li><em>Summary</em>: total requests, failures, failure ratio, average req/s and
+p50/p95/p99 of the <em>Aggregated</em> row of Locust’s <tt class="docutils literal">stats_stats.csv</tt>.</li>
+<li><em>System Summary</em>: average/maximum CPU, RAM %, RAM used, RSS and active
+PostgreSQL connections over all samples.</li>
+<li><em>Results per Endpoint</em>: one line per request name (e.g.
+<tt class="docutils literal">res.partner.search_read</tt>, <tt class="docutils literal">sale.order.create+line</tt>,
+<tt class="docutils literal">websocket.presence</tt>).</li>
+<li><em>Open in Sentry</em> (when <tt class="docutils literal">loadtest_sentry_org</tt> is set) opens the trace
+explorer for the run’s time window.</li>
+<li>Raw artefacts stay in <tt class="docutils literal"><span class="pre">&lt;data_dir&gt;/loadtest/run_&lt;id&gt;/</span></tt>.</li>
+</ul>
+<p>A threaded development server measures that setup, not Odoo capacity;
+target an instance running with <tt class="docutils literal">workers &gt; 0</tt> for capacity numbers.</p>
+</div>
+<div class="section" id="cleanup">
+<h1>8. Cleanup</h1>
+<p>On the data batch, <em>Clean Up All</em> runs in dependency order: cancels and
+deletes the generated orders <strong>and every sale order created by the test
+users during runs</strong>, deletes generated and run-time products and
+partners, deletes the test users’ chatter messages and archives the
+users. The per-type <em>Clean Up …</em> buttons do one step each; orders must
+go first.</p>
+</div>
+<div class="section" id="safety-notes">
+<h1>Safety notes</h1>
+<ul class="simple">
+<li><strong>Never point a scenario at a production database.</strong> Journeys create
+orders, partners, products and chatter messages as the test users, and
+cleanup deletes everything those users created. Use a clone
+(<tt class="docutils literal">scripts/clone_db.sh</tt>) or a dedicated instance.</li>
+<li>Test users share the batch <em>Password</em> (default <tt class="docutils literal">loadtest</tt>). Change
+it before generating users and keep load-test instances off the public
+internet; the users have Sales Manager rights.</li>
+<li><tt class="docutils literal">loadtest_enabled</tt> must be explicitly set to <tt class="docutils literal">true</tt> in the server
+configuration of the instance that runs the control plane; leave it
+unset everywhere else.</li>
+<li>A wrong batch password triggers Odoo’s per-IP login cooldown for all
+virtual users (see <em>Configure</em>).</li>
+</ul>
+<div class="section" id="known-issues-roadmap">
+<h2>Known issues / Roadmap</h2>
+<ul class="simple">
+<li>External journey plugins: let other modules or a configurable
+directory contribute Locust user classes instead of editing
+<tt class="docutils literal">locustfiles/journeys.py</tt>; today the <tt class="docutils literal">code</tt> of a journey must be a
+class in that single file.</li>
+<li>Results history: charts of p95, req/s and failure ratio across the
+runs of a scenario, and a graph of the samples (users, RPS, CPU,
+PostgreSQL connections) over the timeline of one run.</li>
+<li>More journeys covering other apps (inventory, accounting,
+website/portal, reporting) and a pure page-load journey (<tt class="docutils literal">/web</tt>,
+assets, <tt class="docutils literal">/odoo</tt>).</li>
+<li>Remote system sampling: today CPU/RAM/RSS describe the host running
+the control plane, not a remote target.</li>
+<li>Make the Locust <tt class="docutils literal"><span class="pre">--autoquit</span></tt> delay, the poll-failure threshold and
+the master log excerpt length configurable.</li>
+<li>Generate the batch password instead of shipping a fixed default.</li>
+<li>Translations: ship an <tt class="docutils literal"><span class="pre">i18n/*.pot</span></tt> and wrap user-facing messages in
+<tt class="docutils literal">_()</tt>.</li>
+</ul>
+</div>
+<div class="section" id="changelog">
+<h2>Changelog</h2>
+</div>
+</div>
+<div class="section" id="section-1">
+<h1>18.0.4.1.0</h1>
+<ul class="simple">
+<li>Presence journey: one Odoo bus websocket per virtual user with
+subscribe, presence heartbeats and notification draining; sends the
+<tt class="docutils literal">Origin</tt> header on the handshake.</li>
+<li>Error Lab journey for the <tt class="docutils literal">sentry_error_lab</tt> endpoints.</li>
+<li><tt class="docutils literal">scripts/clone_db.sh</tt> to clone a database for load testing.</li>
+<li>CI: ruff lint and format check, compile and XML validation.</li>
+</ul>
+</div>
+<div class="section" id="section-2">
+<h1>18.0.4.0.0</h1>
+<ul class="simple">
+<li>Zombie-aware process liveness and poll-failure fallback so runs no
+longer stay <em>Running</em> forever.</li>
+<li>RAM used in GB and CPU core count in samples and summaries.</li>
+</ul>
+</div>
+<div class="section" id="section-3">
+<h1>18.0.3.3.0</h1>
+<ul class="simple">
+<li>Scenario duration as value + unit
+(seconds/minutes/hours/days/infinite); migration converts stored
+seconds.</li>
+<li>Prime the psutil CPU baseline at import.</li>
+</ul>
+</div>
+<div class="section" id="section-4">
+<h1>18.0.3.2.0</h1>
+<ul class="simple">
+<li><em>Stop At</em>: scheduled stop for open-ended runs, checked by the poll
+cron.</li>
+</ul>
+</div>
+<div class="section" id="section-5">
+<h1>18.0.3.1.0</h1>
+<ul class="simple">
+<li>System samples per run: live view and average/maximum summary.</li>
+</ul>
+</div>
+<div class="section" id="section-6">
+<h1>18.0.3.0.0</h1>
+<ul class="simple">
+<li>Scenarios and Locust runs driven from Odoo: detached Locust process,
+REST polling, CSV ingestion, distributed workers, Sentry link.</li>
+<li>Numeric next-user index (<tt class="docutils literal">loadtest_999</tt> / <tt class="docutils literal">loadtest_1000</tt>).</li>
+</ul>
+</div>
+<div class="section" id="section-7">
+<h1>18.0.2.1.0</h1>
+<ul class="simple">
+<li>Per-type generate and clean-up actions in the batch form header.</li>
+</ul>
+</div>
+<div class="section" id="section-8">
+<h1>18.0.2.0.1</h1>
+<ul class="simple">
+<li>Use the app icon in the app switcher.</li>
+</ul>
+</div>
+<div class="section" id="section-9">
+<h1>18.0.2.0.0</h1>
+<ul class="simple">
+<li>Per-type generate and clean-up actions.</li>
+</ul>
+</div>
+<div class="section" id="section-10">
+<h1>18.0.1.3.0</h1>
+<ul class="simple">
+<li>Test users get Sales Manager rights.</li>
+</ul>
+</div>
+<div class="section" id="section-11">
+<h1>18.0.1.2.0</h1>
+<ul class="simple">
+<li>Cleanup sweeps the records test users created during runs.</li>
+</ul>
+</div>
+<div class="section" id="section-12">
+<h1>18.0.1.1.0</h1>
+<ul class="simple">
+<li>Smart buttons and tabs for generated data.</li>
+</ul>
+</div>
+<div class="section" id="section-13">
+<h1>18.0.1.0.0</h1>
+<ul class="simple">
+<li>Initial release: load-test data batches with guarded generation and
+cleanup.</li>
+</ul>
+<div class="section" id="bug-tracker">
+<h2>Bug Tracker</h2>
+<p>Bugs are tracked on <a class="reference external" href="https://github.com/isikerkan/odoo-loadtest-toolkit/issues">GitHub Issues</a>.
+In case of trouble, please check there if your issue has already been reported.
+If you spotted it first, help us to smash it by providing a detailed and welcomed
+<a class="reference external" href="https://github.com/isikerkan/odoo-loadtest-toolkit/issues/new?body=module:%20loadtest_toolkit%0Aversion:%2018.0%0A%0A**Steps%20to%20reproduce**%0A-%20...%0A%0A**Current%20behavior**%0A%0A**Expected%20behavior**">feedback</a>.</p>
+<p>Do not contact contributors directly about support or help with technical issues.</p>
+</div>
+<div class="section" id="credits">
+<h2>Credits</h2>
+</div>
+</div>
+<div class="section" id="authors">
+<h1>Authors</h1>
+<ul class="simple">
+<li>Erkan Isik</li>
+</ul>
+</div>
+<div class="section" id="contributors">
+<h1>Contributors</h1>
+<ul class="simple">
+<li>Erkan Isik <a class="reference external" href="mailto:isik.4900&#64;outlook.com">isik.4900&#64;outlook.com</a></li>
+<li>Claude Code (Anthropic) - pair programming</li>
+</ul>
+</div>
+<div class="section" id="other-credits">
+<h1>Other credits</h1>
+<p>The load is generated by <a class="reference external" href="https://locust.io">Locust</a> (MIT license),
+run as an external process and driven through its REST API and CSV
+export. System sampling uses
+<a class="reference external" href="https://github.com/giampaolo/psutil">psutil</a> and the <em>Presence</em>
+journey uses
+<a class="reference external" href="https://github.com/websocket-client/websocket-client">websocket-client</a>.</p>
+</div>
+<div class="section" id="maintainers">
+<h1>Maintainers</h1>
+<p>Current maintainer:</p>
+<p><a class="reference external image-reference" href="https://github.com/isikerkan"><img alt="isikerkan" src="https://github.com/isikerkan.png?size=40px" /></a></p>
+<p>This module is part of the <a class="reference external" href="https://github.com/isikerkan/odoo-loadtest-toolkit/tree/18.0/loadtest_toolkit">isikerkan/odoo-loadtest-toolkit</a> project on GitHub.</p>
+<p>You are welcome to contribute.</p>
+</div>
+</div>
+</body>
+</html>
