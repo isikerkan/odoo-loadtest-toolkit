@@ -13,16 +13,16 @@ jobs:
         with:
           python-version: "3.12"
       - name: ruff check
-        run: pipx run ruff check loadtest_toolkit
+        run: pipx run ruff check loadtest_toolkit loadtest_toolkit_queue_job
       - name: ruff format check
-        run: pipx run ruff format --check loadtest_toolkit
+        run: pipx run ruff format --check loadtest_toolkit loadtest_toolkit_queue_job
       - name: compile all python
-        run: python -m compileall -q loadtest_toolkit
+        run: python -m compileall -q loadtest_toolkit loadtest_toolkit_queue_job
       - name: validate XML
         run: |
           python - <<'PY'
           import glob, xml.etree.ElementTree as ET
-          for path in glob.glob("loadtest_toolkit/**/*.xml", recursive=True):
+          for path in glob.glob("loadtest_toolkit*/**/*.xml", recursive=True):
               ET.parse(path)
           print("xml ok")
           PY
