@@ -21,15 +21,31 @@
     .o_loadtest_charts_grid {
         display: grid;
         width: 100%;
+        min-width: 0;
         gap: map-get($spacers, 3);
-        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        // interpolated so Sass passes the CSS min() through instead of evaluating it
+        grid-template-columns: repeat(auto-fit, minmax(#{"min(340px, 100%)"}, 1fr));
+
+        // grid items must be allowed to shrink below their content size,
+        // otherwise the canvas (Chart.js gives it an explicit pixel width)
+        // holds the column open when the page gets narrower, e.g. on browser
+        // zoom-in, and the block overflows sideways instead of resizing
+        > div {
+            min-width: 0;
+        }
     }
 
     .o_loadtest_chart {
         position: relative;
+        min-width: 0;
+        overflow: hidden;
         // below the sheet: three panels side by side when wide, stacked when
         // narrow; a third of the viewport each, bounded
         height: clamp(200px, 32vh, 420px);
+
+        canvas {
+            max-width: 100%;
+        }
     }
 
     @include media-breakpoint-up(xxl) {
