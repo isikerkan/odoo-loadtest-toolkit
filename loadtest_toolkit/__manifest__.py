@@ -2,7 +2,7 @@
 {
     "name": "Load Test Toolkit",
     "summary": "Generate load-test data, define scenarios and run Locust from Odoo",
-    "version": "18.0.5.0.0",
+    "version": "18.0.5.0.1",
     "category": "Extra Tools",
     "website": "https://github.com/isikerkan/odoo-loadtest-toolkit",
     "author": "Erkan Isik",
