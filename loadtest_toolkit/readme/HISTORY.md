@@ -1,3 +1,9 @@
+## 18.0.5.0.2
+
+- Run charts shrink with the page again: the canvas no longer holds its
+  column open when the browser zooms in or the window gets narrower, so
+  the block resizes instead of overflowing sideways.
+
 ## 18.0.5.0.1
 
 - Run charts size with the page: the aside grows into the width the
