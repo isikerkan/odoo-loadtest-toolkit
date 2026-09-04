@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="loadtest_toolkit.RunChartsField">
-        <div class="o_loadtest_run_charts_field">
+        <div class="o_loadtest_run_charts_field" t-ref="root">
             <t t-if="isEmpty">
                 <p class="text-muted fst-italic m-2">No samples yet. The charts fill in once the run has been polled.</p>
             </t>
