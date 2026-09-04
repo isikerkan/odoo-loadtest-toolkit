@@ -1,22 +1,51 @@
 // The charts block is a root child of the form, i.e. it sits where the
-// chatter normally is: as an aside next to the sheet on very wide screens
-// (the form renderer switches to a flex row at the XXL breakpoint), below
-// the sheet otherwise. Mirror the chatter's aside sizing so the sheet keeps
-// its width.
+// chatter normally is: an aside next to the sheet on very wide screens (the
+// form renderer switches to a flex row at the XXL breakpoint), below the
+// sheet otherwise. Sizing follows the page: the aside takes whatever width
+// the sheet leaves over, the grid picks 1 to 3 columns from the width it
+// gets, and chart heights derive from the viewport height so the three
+// panels fill the visible area without a fixed pixel size.
 .o_loadtest_run_charts {
     width: 100%;
     padding: 0 map-get($spacers, 3) map-get($spacers, 4);
     background-color: $o-view-background-color;
 
-    @include media-breakpoint-up(xxl) {
-        flex: 1 0 530px;
-        min-width: 0;
-        width: 530px;
-        padding-top: map-get($spacers, 3);
+    // the form renders a field as an inline element; the charts need the
+    // full width of the block to size themselves
+    .o_field_widget,
+    .o_loadtest_run_charts_field {
+        display: block;
+        width: 100%;
+    }
+
+    .o_loadtest_charts_grid {
+        display: grid;
+        width: 100%;
+        gap: map-get($spacers, 3);
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
     }
 
     .o_loadtest_chart {
         position: relative;
-        height: 220px;
+        // below the sheet: three panels side by side when wide, stacked when
+        // narrow; a third of the viewport each, bounded
+        height: clamp(200px, 32vh, 420px);
+    }
+
+    @include media-breakpoint-up(xxl) {
+        // aside: share the row with the sheet, grow into the remaining width
+        flex: 1 1 530px;
+        min-width: 480px;
+        width: auto;
+        padding-top: map-get($spacers, 3);
+
+        .o_loadtest_charts_grid {
+            grid-template-columns: 1fr;
+        }
+
+        .o_loadtest_chart {
+            // three stacked panels filling the viewport below the control panel
+            height: clamp(180px, calc((100vh - 15rem) / 3), 480px);
+        }
     }
 }

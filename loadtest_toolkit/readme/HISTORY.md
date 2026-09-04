@@ -1,3 +1,9 @@
+## 18.0.5.0.1
+
+- Run charts size with the page: the aside grows into the width the
+  sheet leaves over, panel heights follow the viewport height, and below
+  the sheet the panels arrange in one to three columns by available width.
+
 ## 18.0.5.0.0
 
 - Generated partners, products and orders point back at their batch with
