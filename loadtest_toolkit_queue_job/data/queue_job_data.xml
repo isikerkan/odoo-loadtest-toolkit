@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo noupdate="1">
+    <record id="channel_loadtest" model="queue.job.channel">
+        <field name="name">loadtest</field>
+        <field name="parent_id" ref="queue_job.channel_root" />
+    </record>
+    <record id="job_function_generate_partners_chunk" model="queue.job.function">
+        <field name="model_id" ref="loadtest_toolkit.model_loadtest_batch" />
+        <field name="method">_generate_partners_chunk</field>
+        <field name="channel_id" ref="channel_loadtest" />
+        <field name="retry_pattern" eval="{1: 60, 3: 300}" />
+    </record>
+    <record id="job_function_generate_products_chunk" model="queue.job.function">
+        <field name="model_id" ref="loadtest_toolkit.model_loadtest_batch" />
+        <field name="method">_generate_products_chunk</field>
+        <field name="channel_id" ref="channel_loadtest" />
+        <field name="retry_pattern" eval="{1: 60, 3: 300}" />
+    </record>
+    <record id="job_function_generate_orders_chunk" model="queue.job.function">
+        <field name="model_id" ref="loadtest_toolkit.model_loadtest_batch" />
+        <field name="method">_generate_orders_chunk</field>
+        <field name="channel_id" ref="channel_loadtest" />
+        <field name="retry_pattern" eval="{1: 60, 3: 300}" />
+    </record>
+    <record id="job_function_finalize" model="queue.job.function">
+        <field name="model_id" ref="loadtest_toolkit.model_loadtest_batch" />
+        <field name="method">_job_finalize</field>
+        <field name="channel_id" ref="channel_loadtest" />
+    </record>
+    <record id="job_function_cleanup" model="queue.job.function">
+        <field name="model_id" ref="loadtest_toolkit.model_loadtest_batch" />
+        <field name="method">_job_cleanup</field>
+        <field name="channel_id" ref="channel_loadtest" />
+        <field name="retry_pattern" eval="{1: 60, 3: 300}" />
+    </record>
+</odoo>
