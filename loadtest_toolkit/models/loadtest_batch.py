@@ -9,14 +9,27 @@ from odoo.tools import config, str2bool
 
 _logger = logging.getLogger(__name__)
 
-CHUNK = 500
+CHUNK = 500  # records per ORM create() inside one generation chunk
+LINKED_MODELS = {
+    "partner": "res.partner",
+    "product": "product.template",
+    "order": "sale.order",
+}
 
 
 class LoadtestBatch(models.Model):
     """A batch of generated load-test data: users plus the records they
     work on. Generation is guarded by the loadtest_enabled server
     option so it can never run on an unprepared database; cleanup
-    removes everything the batch created."""
+    removes everything the batch created.
+
+    Generation is chunk-capable: ``_generate_<kind>_chunk(start, size)``
+    creates the records with indexes ``start .. start + size - 1`` and is
+    idempotent (indexes that already exist are skipped), so chunks can be
+    retried or handed to background jobs. Generated records point back at
+    the batch through ``loadtest_batch_id`` (see loadtest.linked.mixin)
+    instead of a relation table, which keeps counting and cleanup cheap at
+    millions of records."""
 
     _name = "loadtest.batch"
     _description = "Load Test Data Batch"
@@ -26,7 +39,6 @@ class LoadtestBatch(models.Model):
     state = fields.Selection(
         [("draft", "Empty"), ("partial", "Partially Generated"), ("generated", "Generated")],
         compute="_compute_state",
-        store=True,
     )
     user_count = fields.Integer(default=10, help="Test users to create (login loadtest_NNN)")
     partner_count = fields.Integer(default=100)
@@ -35,63 +47,88 @@ class LoadtestBatch(models.Model):
     password = fields.Char(default="loadtest", help="Password for all test users of this batch")
 
     user_ids = fields.Many2many("res.users", "loadtest_batch_user_rel", string="Test Users")
-    partner_ids = fields.Many2many(
-        "res.partner", "loadtest_batch_partner_rel", string="Generated Partners"
+    partner_ids = fields.One2many(
+        "res.partner", "loadtest_batch_id", string="Generated Partners", readonly=True
     )
-    product_ids = fields.Many2many(
-        "product.product", "loadtest_batch_product_rel", string="Generated Products"
+    product_ids = fields.One2many(
+        "product.template", "loadtest_batch_id", string="Generated Products", readonly=True
     )
-    order_ids = fields.Many2many(
-        "sale.order", "loadtest_batch_order_rel", string="Generated Orders"
+    order_ids = fields.One2many(
+        "sale.order", "loadtest_batch_id", string="Generated Orders", readonly=True
     )
 
-    # live counts of what the batch owns, for the smart buttons
+    # live counts of what the batch owns, for the smart buttons; computed
+    # with search_count so a batch never loads millions of ids
     generated_user_count = fields.Integer(compute="_compute_generated_counts")
     generated_partner_count = fields.Integer(compute="_compute_generated_counts")
     generated_product_count = fields.Integer(compute="_compute_generated_counts")
     generated_order_count = fields.Integer(compute="_compute_generated_counts")
 
-    @api.depends("user_ids", "partner_ids", "product_ids", "order_ids")
-    def _compute_state(self):
-        for batch in self:
-            present = [
-                bool(batch.user_ids),
-                bool(batch.partner_ids),
-                bool(batch.product_ids),
-                bool(batch.order_ids),
-            ]
-            batch.state = "generated" if all(present) else ("partial" if any(present) else "draft")
+    def _linked(self, kind):
+        """Empty recordset of the linked model, sudo, archived included."""
+        return self.env[LINKED_MODELS[kind]].sudo().with_context(active_test=False)
+
+    def _linked_domain(self, kind):
+        self.ensure_one()
+        return [("loadtest_batch_id", "=", self.id)]
+
+    def _count(self, kind):
+        self.ensure_one()
+        return self._linked(kind).search_count(self._linked_domain(kind))
+
+    def _has(self, kind):
+        return bool(self._count(kind))
 
     @api.depends("user_ids", "partner_ids", "product_ids", "order_ids")
     def _compute_generated_counts(self):
         for batch in self:
             batch.generated_user_count = len(batch.user_ids)
-            batch.generated_partner_count = len(batch.partner_ids)
-            batch.generated_product_count = len(batch.product_ids)
-            batch.generated_order_count = len(batch.order_ids)
+            batch.generated_partner_count = batch._count("partner")
+            batch.generated_product_count = batch._count("product")
+            batch.generated_order_count = batch._count("order")
 
-    def _action_view(self, model, records, name):
+    @api.depends(
+        "generated_user_count",
+        "generated_partner_count",
+        "generated_product_count",
+        "generated_order_count",
+    )
+    def _compute_state(self):
+        for batch in self:
+            present = [
+                bool(batch.generated_user_count),
+                bool(batch.generated_partner_count),
+                bool(batch.generated_product_count),
+                bool(batch.generated_order_count),
+            ]
+            batch.state = "generated" if all(present) else ("partial" if any(present) else "draft")
+
+    def _action_view(self, model, domain, name):
         self.ensure_one()
         return {
             "type": "ir.actions.act_window",
             "name": name,
             "res_model": model,
             "view_mode": "list,form",
-            "domain": [("id", "in", records.ids)],
+            "domain": domain,
             "context": {"active_test": False},
         }
 
     def action_view_users(self):
-        return self._action_view("res.users", self.user_ids, "Test Users")
+        return self._action_view("res.users", [("id", "in", self.user_ids.ids)], "Test Users")
 
     def action_view_partners(self):
-        return self._action_view("res.partner", self.partner_ids, "Generated Partners")
+        return self._action_view(
+            "res.partner", self._linked_domain("partner"), "Generated Partners"
+        )
 
     def action_view_products(self):
-        return self._action_view("product.product", self.product_ids, "Generated Products")
+        return self._action_view(
+            "product.template", self._linked_domain("product"), "Generated Products"
+        )
 
     def action_view_orders(self):
-        return self._action_view("sale.order", self.order_ids, "Generated Orders")
+        return self._action_view("sale.order", self._linked_domain("order"), "Generated Orders")
 
     # ------------------------------------------------------------------
     @api.model
@@ -146,77 +183,135 @@ class LoadtestBatch(models.Model):
         self.user_ids = [(6, 0, users.ids)]
         return users
 
-    def _generate_partners(self):
+    # ------------------------------------------------------------------
+    # chunk-capable generation: deterministic keys per index, idempotent
+    def _key(self, prefix, index):
         self.ensure_one()
-        values = [
-            {
-                "name": f"LT{self.id} {'Company' if i % 4 == 0 else 'Contact'} {i:05d}",
-                "is_company": i % 4 == 0,
-                "email": f"lt{self.id}.partner{i:05d}@loadtest.invalid",
-                "phone": f"+49 000 {i:07d}",
-            }
-            for i in range(self.partner_count)
-        ]
-        records = self.env["res.partner"]
+        return f"LT{self.id}-{prefix}{index:08d}"
+
+    def _missing_indexes(self, kind, key_field, prefix, start, size):
+        """Indexes in [start, start + size) that have no record yet."""
+        keys = {self._key(prefix, i): i for i in range(start, start + size)}
+        existing = self._linked(kind).search_read(
+            [*self._linked_domain(kind), (key_field, "in", list(keys))], [key_field]
+        )
+        for record in existing:
+            keys.pop(record[key_field], None)
+        return sorted(keys.values())
+
+    def _create_chunked(self, model, values):
+        records = self.env[model]
         for offset in range(0, len(values), CHUNK):
-            records |= self.env["res.partner"].create(values[offset : offset + CHUNK])
-        self.partner_ids = [(6, 0, records.ids)]
+            records |= self.env[model].create(values[offset : offset + CHUNK])
         return records
 
-    def _generate_products(self):
+    def _generate_partners_chunk(self, start, size):
+        """Generate the partners with indexes start .. start + size - 1."""
         self.ensure_one()
         values = [
             {
-                "name": f"LT{self.id} Product {i:05d}",
+                "name": f"LT{self.id} {'Company' if i % 4 == 0 else 'Contact'} {i:08d}",
+                "is_company": i % 4 == 0,
+                "ref": self._key("P", i),
+                "email": f"lt{self.id}.partner{i:08d}@loadtest.invalid",
+                "phone": f"+41 00 {i % 10_000_000:07d}",
+                "loadtest_batch_id": self.id,
+            }
+            for i in self._missing_indexes("partner", "ref", "P", start, size)
+        ]
+        return self._create_chunked("res.partner", values)
+
+    def _generate_products_chunk(self, start, size):
+        """Generate the products with indexes start .. start + size - 1."""
+        self.ensure_one()
+        values = [
+            {
+                "name": f"LT{self.id} Product {i:08d}",
                 "sale_ok": True,
                 "type": "service",
-                "list_price": round(random.uniform(5, 500), 2),
-                "default_code": f"LT{self.id}-{i:05d}",
+                # deterministic per index so retries reproduce the same data
+                "list_price": round(random.Random(i).uniform(5, 500), 2),
+                "default_code": self._key("", i),
+                "loadtest_batch_id": self.id,
             }
-            for i in range(self.product_count)
+            for i in self._missing_indexes("product", "default_code", "", start, size)
         ]
-        records = self.env["product.product"]
-        for offset in range(0, len(values), CHUNK):
-            records |= self.env["product.product"].create(values[offset : offset + CHUNK])
-        self.product_ids = [(6, 0, records.ids)]
-        return records
+        return self._create_chunked("product.template", values)
 
-    def _generate_orders(self, users, partners, products):
+    def _order_pools(self, size=1000):
+        """Sample of users, partners and product variants for orders: a
+        bounded pool, never the full (possibly huge) generated sets."""
         self.ensure_one()
-        if not (users and partners and products):
+        partners = self._linked("partner").search(
+            [*self._linked_domain("partner"), ("is_company", "=", True)], limit=size
+        ) or self._linked("partner").search(self._linked_domain("partner"), limit=size)
+        variants = (
+            self.env["product.product"]
+            .sudo()
+            .search([("product_tmpl_id.loadtest_batch_id", "=", self.id)], limit=size)
+        )
+        return self.user_ids, partners, variants
+
+    def _generate_orders_chunk(self, start, size):
+        """Generate the sale orders with indexes start .. start + size - 1,
+        each created by a test user so the data profile matches what
+        those users later read and write in load runs."""
+        self.ensure_one()
+        users, partners, variants = self._order_pools()
+        if not (users and partners and variants):
             return self.env["sale.order"]
         orders = self.env["sale.order"]
-        companies = partners.filtered("is_company") or partners
-        for i in range(self.order_count):
-            # created by a random test user so the data profile matches
-            # what those users later read and write in load runs
+        for i in self._missing_indexes("order", "client_order_ref", "O", start, size):
+            rng = random.Random(i)
             user = users[i % len(users)]
             lines = [
                 (
                     0,
                     0,
-                    {
-                        "product_id": random.choice(products.ids),
-                        "product_uom_qty": random.randint(1, 5),
-                    },
+                    {"product_id": rng.choice(variants.ids), "product_uom_qty": rng.randint(1, 5)},
                 )
-                for _ in range(random.randint(1, 3))
+                for _ in range(rng.randint(1, 3))
             ]
             order = (
                 self.env["sale.order"]
                 .with_user(user)
                 .create(
                     {
-                        "partner_id": random.choice(companies.ids),
+                        "partner_id": rng.choice(partners.ids),
+                        "client_order_ref": self._key("O", i),
                         "order_line": lines,
+                        "loadtest_batch_id": self.id,
                     }
                 )
             )
             if i % 3 == 0:
                 order.with_user(user).action_confirm()
             orders |= order.sudo()
-        self.order_ids = [(6, 0, orders.ids)]
         return orders
+
+    def _chunks(self, total, size=CHUNK):
+        return [(start, min(size, total - start)) for start in range(0, total, size)]
+
+    def _generate_partners(self):
+        self.ensure_one()
+        records = self.env["res.partner"]
+        for start, size in self._chunks(self.partner_count):
+            records |= self._generate_partners_chunk(start, size)
+        return records
+
+    def _generate_products(self):
+        self.ensure_one()
+        records = self.env["product.template"]
+        for start, size in self._chunks(self.product_count):
+            records |= self._generate_products_chunk(start, size)
+        return records
+
+    def _generate_orders(self):
+        self.ensure_one()
+        records = self.env["sale.order"]
+        for start, size in self._chunks(self.order_count, 100):
+            records |= self._generate_orders_chunk(start, size)
+        return records
 
     # ------------------------------------------------------------------
     # per-type generation
@@ -231,7 +326,7 @@ class LoadtestBatch(models.Model):
     def action_generate_partners(self):
         self._check_enabled()
         for batch in self:
-            if batch.partner_ids:
+            if batch._has("partner"):
                 raise UserError("Partners already generated for this batch.")
             batch._generate_partners()
         return True
@@ -239,7 +334,7 @@ class LoadtestBatch(models.Model):
     def action_generate_products(self):
         self._check_enabled()
         for batch in self:
-            if batch.product_ids:
+            if batch._has("product"):
                 raise UserError("Products already generated for this batch.")
             batch._generate_products()
         return True
@@ -247,11 +342,11 @@ class LoadtestBatch(models.Model):
     def action_generate_orders(self):
         self._check_enabled()
         for batch in self:
-            if batch.order_ids:
+            if batch._has("order"):
                 raise UserError("Orders already generated for this batch.")
-            if not (batch.user_ids and batch.partner_ids and batch.product_ids):
+            if not (batch.user_ids and batch._has("partner") and batch._has("product")):
                 raise UserError("Generate users, partners and products before orders.")
-            batch._generate_orders(batch.user_ids, batch.partner_ids, batch.product_ids)
+            batch._generate_orders()
         return True
 
     def action_generate(self):
@@ -260,67 +355,73 @@ class LoadtestBatch(models.Model):
         for batch in self:
             if not batch.user_ids:
                 batch._generate_users()
-            if not batch.partner_ids:
+            if not batch._has("partner"):
                 batch._generate_partners()
-            if not batch.product_ids:
+            if not batch._has("product"):
                 batch._generate_products()
-            if not batch.order_ids:
-                batch._generate_orders(batch.user_ids, batch.partner_ids, batch.product_ids)
+            if not batch._has("order"):
+                batch._generate_orders()
             _logger.info("loadtest batch %s generated: %s", batch.id, batch._summary())
         return True
 
     def _summary(self):
         self.ensure_one()
         return (
-            f"{len(self.user_ids)} users, {len(self.partner_ids)} partners, "
-            f"{len(self.product_ids)} products, {len(self.order_ids)} orders"
+            f"{len(self.user_ids)} users, {self._count('partner')} partners, "
+            f"{self._count('product')} products, {self._count('order')} orders"
         )
 
     # ------------------------------------------------------------------
-    # per-type cleanup (orders first: they reference partners/products)
-    def _unlink_orders(self, orders):
-        orders = orders.sudo().exists()
-        if orders:
-            orders.filtered(lambda o: o.state not in ("draft", "cancel"))._action_cancel()
-            orders.unlink()
+    # per-type cleanup (orders first: they reference partners/products),
+    # in chunks so a batch of millions never builds one giant recordset
+    def _unlink_chunked(self, model, domain, size=CHUNK):
+        """Delete everything matching domain, size records at a time.
+        Sale orders are cancelled first, Odoo refuses to delete confirmed
+        ones. Returns the number of records deleted."""
+        records_model = self.env[model].sudo().with_context(active_test=False)
+        deleted = 0
+        while True:
+            records = records_model.search(domain, limit=size)
+            if not records:
+                return deleted
+            if model == "sale.order":
+                records.filtered(lambda o: o.state not in ("draft", "cancel"))._action_cancel()
+            records.unlink()
+            deleted += len(records)
+
+    def _cleanup_kind(self, kind):
+        """Delete what the batch generated of this kind plus the strays its
+        test users created during load runs."""
+        self.ensure_one()
+        model = LINKED_MODELS[kind]
+        deleted = self._unlink_chunked(model, self._linked_domain(kind))
+        if self.user_ids:
+            deleted += self._unlink_chunked(
+                model,
+                [("create_uid", "in", self.user_ids.ids), ("loadtest_batch_id", "=", False)],
+            )
+        return deleted
 
     def action_cleanup_orders(self):
         for batch in self:
-            batch._unlink_orders(batch.order_ids)
-            # orders the test users created during load runs
-            batch._unlink_orders(
-                self.env["sale.order"].sudo().search([("create_uid", "in", batch.user_ids.ids)])
-            )
-            batch.order_ids = [(5, 0, 0)]
+            batch._cleanup_kind("order")
         return True
 
     def _require_no_orders(self, what):
         for batch in self:
-            if batch.order_ids:
+            if batch._has("order"):
                 raise UserError(f"Clean up the orders before the {what}.")
 
     def action_cleanup_products(self):
         self._require_no_orders("products")
         for batch in self:
-            batch.product_ids.sudo().exists().unlink()
-            stray = (
-                self.env["product.template"]
-                .sudo()
-                .search([("create_uid", "in", batch.user_ids.ids)])
-            )
-            stray.unlink()
-            batch.product_ids = [(5, 0, 0)]
+            batch._cleanup_kind("product")
         return True
 
     def action_cleanup_partners(self):
         self._require_no_orders("partners")
         for batch in self:
-            batch.partner_ids.sudo().exists().unlink()
-            stray = (
-                self.env["res.partner"].sudo().search([("create_uid", "in", batch.user_ids.ids)])
-            )
-            stray.unlink()
-            batch.partner_ids = [(5, 0, 0)]
+            batch._cleanup_kind("partner")
         return True
 
     def action_cleanup_users(self):
