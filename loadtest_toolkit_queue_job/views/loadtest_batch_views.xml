@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="loadtest_batch_view_form" model="ir.ui.view">
+        <field name="name">loadtest.batch.form (queue_job)</field>
+        <field name="model">loadtest.batch</field>
+        <field name="inherit_id" ref="loadtest_toolkit.loadtest_batch_view_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//header/field[@name='state']" position="before">
+                <button name="action_requeue_failed_jobs" type="object" string="Requeue Failed Jobs" class="btn-warning" invisible="not job_failed_count" />
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_jobs" type="object" class="oe_stat_button" icon="fa-tasks" invisible="not job_count">
+                    <field name="job_count" widget="statinfo" string="Jobs" />
+                </button>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="attributes">
+                <attribute name="invisible">state == 'draft' and not job_count</attribute>
+            </xpath>
+            <xpath expr="//sheet/group[1]" position="after">
+                <div class="alert alert-info d-flex align-items-center gap-3" role="status" invisible="job_state != 'running'">
+                    <span>Background jobs running:</span>
+                    <field name="job_progress" widget="progressbar" class="flex-grow-1" />
+                    <span><field name="job_done_count" class="oe_inline" /> / <field name="job_count" class="oe_inline" /> done, <field name="job_active_count" class="oe_inline" /> pending. Reload the form to refresh.</span>
+                </div>
+                <div class="alert alert-danger" role="alert" invisible="job_state != 'failed'">
+                    <field name="job_failed_count" class="oe_inline" /> background jobs failed. Check them with the Jobs button; chunks are idempotent, so requeueing is safe.
+                </div>
+                <group string="Background jobs">
+                    <field name="generation_mode" widget="radio" options="{'horizontal': true}" />
+                    <field name="job_chunk_size" invisible="generation_mode != 'jobs'" />
+                    <field name="job_channel" invisible="generation_mode != 'jobs'" />
+                    <field name="job_state" invisible="job_state == 'idle'" />
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

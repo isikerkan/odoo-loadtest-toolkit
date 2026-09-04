@@ -1,0 +1,2 @@
+- Erkan Isik \<<isik.4900@outlook.com>\>
+- Claude Code (Anthropic) - pair programming
