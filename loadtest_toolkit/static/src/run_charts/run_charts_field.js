@@ -5,7 +5,8 @@ import { loadBundle } from "@web/core/assets";
 import { registry } from "@web/core/registry";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
 
-import { Component, onWillStart, useEffect, useRef } from "@odoo/owl";
+import { Component, onWillStart, onWillUnmount, useEffect, useRef } from "@odoo/owl";
+import { useDebounced } from "@web/core/utils/timing";
 
 /* global Chart */
 
@@ -33,6 +34,7 @@ export class LoadtestRunChartsField extends Component {
 
     setup() {
         this.charts = [];
+        this.rootRef = useRef("root");
         this.refs = {
             throughput: useRef("throughput"),
             latency: useRef("latency"),
@@ -46,6 +48,31 @@ export class LoadtestRunChartsField extends Component {
             },
             () => [JSON.stringify(this.props.record.data[this.props.name] || null)]
         );
+        // Chart.js watches the canvas container itself, but the block also
+        // moves between the aside and below the sheet, and browser zoom
+        // changes both the CSS size and the device pixel ratio. Watch the
+        // whole block and force a resize (debounced) so the charts always
+        // follow the layout without a reload.
+        this.resizeCharts = useDebounced(() => {
+            for (const chart of this.charts) {
+                chart.resize();
+            }
+        }, 100);
+        this.resizeObserver = new ResizeObserver(() => this.resizeCharts());
+        useEffect(
+            (root) => {
+                if (root) {
+                    this.resizeObserver.observe(root);
+                    return () => this.resizeObserver.unobserve(root);
+                }
+            },
+            () => [this.rootRef.el]
+        );
+        window.addEventListener("resize", this.resizeCharts);
+        onWillUnmount(() => {
+            window.removeEventListener("resize", this.resizeCharts);
+            this.resizeObserver.disconnect();
+        });
     }
 
     get data() {
